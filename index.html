@@ -234,18 +234,17 @@ function makeRow(id, name, lat, lon, t){
 }
 const nameRe = new RegExp(NAME_RE,'i');
 
-/* source 1: Overpass (complete tags, but the free servers are sometimes slow) */
-async function fromOverpass(){
-  const q=`[out:json][timeout:25];
-nwr(around:${radiusKm*1000},${center.lat},${center.lon})[~"^(sport|leisure|amenity|club)$"~"."]->.a;
-(nwr.a["sport"~"${SPORTS}",i]; nwr.a["amenity"="dojo"]; nwr.a["name"~"${NAME_RE}",i];);
-out center tags;`;
+/* source 1: Overpass, two queries (a fast one on sport tags, a heavier one on names) */
+async function overpass(q){
   const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),30000);
   try{
     const js = await Promise.any(ENDPOINTS.map(ep =>
       fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal})
         .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-        .then(js => { if (!js || !Array.isArray(js.elements)) throw new Error('bad'); return js; })));
+        .then(js => {
+          if (!js || !Array.isArray(js.elements)) throw new Error('bad');
+          if (js.remark && /error|timed out|timeout/i.test(js.remark) && !js.elements.length) throw new Error('timeout');   /* a server that gave up says so here */
+          return js; })));
     return js.elements.map(el=>{
       const lat=el.lat??el.center?.lat, lon=el.lon??el.center?.lon; if (lat==null) return null;
       const t=el.tags||{}; const name=t['name:he']||t.name||t['name:en']; if (!name) return null;
@@ -253,30 +252,16 @@ out center tags;`;
     }).filter(Boolean);
   } finally { clearTimeout(tm); ctl.abort(); }
 }
+const around = () => `(around:${radiusKm*1000},${center.lat},${center.lon})`;
+const fromOverpassTags = () => overpass(`[out:json][timeout:25];(nwr${around()}["sport"~"${SPORTS}",i];nwr${around()}["amenity"="dojo"];);out center tags;`);
+const fromOverpassNames = () => overpass(`[out:json][timeout:25];nwr${around()}[~"^(leisure|amenity|club)$"~"."]->.a;nwr.a["name"~"${NAME_RE}",i];out center tags;`);
+
+const bboxOf = () => { const dLat=radiusKm/111, dLon=radiusKm/(111*Math.cos(center.lat*Math.PI/180)); return [center.lon-dLon, center.lat-dLat, center.lon+dLon, center.lat+dLat]; };
+const SKIP_KEYS=['place','highway','boundary','railway','landuse','natural','waterway','building','route'];
 
 /* source 2: Photon name search (fast), then one Nominatim lookup for phones / hours / website */
 const TERMS=['karate','judo','dojo','jiu jitsu','krav maga','martial arts','taekwondo','kickboxing','muay thai','boxing','aikido','kung fu','capoeira','mma','קראטה','ג׳ודו','קרב מגע','אמנויות לחימה','אגרוף','קיקבוקס'];
-const SKIP_KEYS=['place','highway','boundary','railway','landuse','natural','waterway','building','route'];
-async function fromPhoton(){
-  const dLat = radiusKm/111, dLon = radiusKm/(111*Math.cos(center.lat*Math.PI/180));
-  const bbox = [center.lon-dLon, center.lat-dLat, center.lon+dLon, center.lat+dLat].map(x=>x.toFixed(5)).join(',');
-  const lists = await Promise.allSettled(TERMS.map(term =>
-    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=40&bbox=${bbox}&lat=${center.lat}&lon=${center.lon}`)
-      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })));
-  const found = new Map();
-  let ok = 0;
-  for (const l of lists){
-    if (l.status!=='fulfilled') continue; ok++;
-    for (const f of (l.value.features||[])){
-      const p=f.properties||{}; if (!p.name || !p.osm_id || SKIP_KEYS.includes(p.osm_key)) continue;
-      if (!nameRe.test(p.name) && p.osm_key!=='sport' && p.osm_value!=='dojo') continue;
-      const id=(p.osm_type||'N')+p.osm_id;
-      if (!found.has(id)) found.set(id,{id, name:p.name, lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
-        t:{name:p.name,'addr:street':p.street||'','addr:housenumber':p.housenumber||'','addr:city':p.city||''}});
-    }
-  }
-  if (!ok) throw new Error('photon down');
-  const items=[...found.values()];
+async function enrich(items){
   for (let k=0;k<items.length;k+=50){
     const chunk=items.slice(k,k+50);
     try{
@@ -292,12 +277,54 @@ async function fromPhoton(){
   }
   return items.map(x=>makeRow(x.id,x.name,x.lat,x.lon,x.t));
 }
+async function fromPhoton(){
+  const bbox = bboxOf().map(x=>x.toFixed(5)).join(',');
+  const lists = await Promise.allSettled(TERMS.map(term =>
+    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=40&bbox=${bbox}&lat=${center.lat}&lon=${center.lon}`)
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })));
+  const found = new Map(); let ok = 0;
+  for (const l of lists){
+    if (l.status!=='fulfilled') continue; ok++;
+    for (const f of (l.value.features||[])){
+      const p=f.properties||{}; if (!p.name || !p.osm_id || SKIP_KEYS.includes(p.osm_key)) continue;
+      if (!nameRe.test(p.name) && p.osm_key!=='sport' && p.osm_value!=='dojo') continue;
+      const id=(p.osm_type||'N')+p.osm_id;
+      if (!found.has(id)) found.set(id,{id, name:p.name, lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
+        t:{name:p.name,'addr:street':p.street||'','addr:housenumber':p.housenumber||'','addr:city':p.city||''}});
+    }
+  }
+  if (!ok) throw new Error((lists[0]&&lists[0].reason&&lists[0].reason.message)||'down');
+  return enrich([...found.values()]);
+}
 
-/* run both sources at once, show whatever arrives first, merge the second in */
-async function load(){
+/* source 3: Nominatim search inside the radius (the same service the city search uses), one request per second */
+const NOM_TERMS=['karate','judo','dojo','קראטה','קרב מגע','ג׳ודו','martial arts','jiu jitsu','krav maga','taekwondo','אמנויות לחימה','boxing'];
+async function fromNominatim(seq, onRows){
+  const [w,s2,e,n] = bboxOf(); let ok=0, total=0;
+  for (const term of NOM_TERMS){
+    if (seq!==loadSeq) return 0;
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=40&bounded=1&extratags=1&addressdetails=1&accept-language=he&viewbox=${w},${n},${e},${s2}&q=${encodeURIComponent(term)}`);
+      const js=await r.json(); ok++;
+      const rows = js.filter(d=>d.name && !['highway','place','boundary','railway','landuse'].includes(d.category)).map(d=>{
+        const a=d.address||{}; const t=Object.assign({name:d.name,'addr:street':a.road||'','addr:housenumber':a.house_number||'','addr:city':a.city||a.town||a.village||''}, d.extratags||{});
+        if (d.category==='amenity') t.amenity=d.type; if (d.category==='shop') t.shop=d.type;
+        return makeRow(d.osm_type[0].toUpperCase()+d.osm_id, d.name, +d.lat, +d.lon, t);
+      }).filter(p=>nameRe.test(p.name) || p.t.sport);
+      total+=rows.length; onRows(rows);
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,1100));
+  }
+  if (!ok) throw new Error('down');
+  return total;
+}
+
+/* run every source at once, show results as they arrive, widen the radius once if nothing turns up */
+let pending = 0, diag = {};
+async function load(autoWidened){
   const seq = ++loadSeq;
   status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ');
-  const byId = new Map(); let done = 0; const errs = [];
+  const byId = new Map(); pending = 4; diag = {};
   const merge = rows => {
     for (const r of rows){
       const old = byId.get(r.id);
@@ -311,18 +338,23 @@ async function load(){
       const k=p.name.trim().toLowerCase()+'|'+p.lat.toFixed(3)+p.lon.toFixed(3); if (seen.has(k)) return false; seen.add(k); return true;
     }).sort((a,b)=>a.dist-b.dist);
   };
-  const finish = () => {
+  const show = () => {
     if (seq!==loadSeq) return;
-    if (++done < 2 && !all.length) return;          /* keep the spinner until something real arrives */
-    if (done === 2 && !all.length && errs.length === 2){
-      status('שרתי המפות לא ענו. נסו שוב בעוד רגע.<br><button class="showmore" onclick="load()">נסו שוב</button><div class="note">'+esc(errs.join(' · '))+'</div>'); return;
-    }
-    render(); if (done===2) fillAddresses(seq);
+    if (all.length){ render(); return; }
+    if (pending>0){ status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ<div class="note">'+esc(diagText())+'</div>'); return; }
+    const next = [2,5,10,20,40].find(r=>r>radiusKm);
+    if (!autoWidened && next){ radiusKm = next; buildRadii(); load(true); return; }
+    render();
   };
-  const run = (fn, label) => fn().then(rows=>{ if (seq===loadSeq) merge(rows); })
-    .catch(e=>{ errs.push(label+': '+(e && e.errors ? 'timeout' : (e && e.message || e))); }).finally(finish);
-  run(fromOverpass,'overpass'); run(fromPhoton,'photon');
+  const run = (label, fn) => fn().then(rows=>{ if (seq!==loadSeq) return; if (Array.isArray(rows)){ merge(rows); diag[label]=rows.length; } else diag[label]=rows; })
+    .catch(e=>{ diag[label]='✕ '+((e && e.errors) ? 'timeout' : (e && e.message || e)); })
+    .finally(()=>{ if (seq!==loadSeq) return; pending--; show(); if (!pending && all.length) fillAddresses(seq); });
+  run('תגיות', fromOverpassTags);
+  run('שמות', fromOverpassNames);
+  run('חיפוש', fromPhoton);
+  run('כתובות', () => fromNominatim(seq, rows => { if (seq!==loadSeq) return; merge(rows); if (all.length) render(); }));
 }
+const diagText = () => Object.entries(diag).map(([k,v])=>k+': '+v).join(' · ');
 
 function visibleBase(){ return all.filter(p => showKids || !p.kids); }
 function render(){
@@ -330,12 +362,13 @@ function render(){
   const base = visibleBase().filter(p => art==='all' || p.arts.includes(art));
   const list = onlyPhone ? base.filter(p=>p.phone) : base;
   const hidden = base.length - list.length;
-  if (!all.length){ status('לא נמצאו מכונים ממופים ברדיוס '+radiusKm+' ק״מ.<br>נסו רדיוס גדול יותר.'); return; }
+  if (!all.length){ status('לא נמצאו מכונים ממופים ברדיוס '+radiusKm+' ק״מ.<br>נסו רדיוס גדול יותר, או חפשו עיר.<div class="note">'+esc(diagText())+'</div>'); return; }
   let h = `<div class="summary"><b>${list.length}</b> מכונים${onlyPhone?' עם טלפון':''} · ${esc(center.label||'')} · מהקרוב לרחוק</div>`;
   if (!list.length) h += `<div class="empty" style="padding:20px">לאף מכון כאן אין טלפון רשום במפה.</div>`;
   h += list.map(card).join('');
   if (onlyPhone && hidden) h += `<button class="showmore" id="showAll">הצג עוד ${hidden} בלי טלפון (עם חיפוש טלפון בגוגל)</button>`;
-  h += `<div class="note">המידע מ־OpenStreetMap. זמני ההגעה משוערים לפי מרחק; Waze ייתן זמן מדויק.</div>`;
+  if (pending>0) h += `<div class="note"><div class="spinner" style="width:18px;height:18px;border-width:2px;margin-bottom:4px"></div>ממשיך לחפש במקורות נוספים…</div>`;
+  h += `<div class="note">המידע מ־OpenStreetMap. זמני ההגעה משוערים לפי מרחק; Waze ייתן זמן מדויק.<br>${esc(diagText())}</div>`;
   $('main').innerHTML = h;
   const sa=$('showAll'); if (sa) sa.onclick=()=>{ onlyPhone=false; save(); render(); };
 }
