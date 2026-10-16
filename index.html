@@ -226,41 +226,102 @@ const NOT_DOJO=['restaurant','cafe','fast_food','bar','pub','pharmacy','fuel','b
 let cc = null, loadSeq = 0;
 
 function status(html){ $('main').innerHTML = '<div class="empty">'+html+'</div>'; }
-async function load(){
-  const seq = ++loadSeq;
-  status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ');
-  /* light query: first take only places that carry a sport / leisure / amenity / club tag around the point, then filter that small set */
+/* turn raw tags into one list row */
+function makeRow(id, name, lat, lon, t){
+  const addr=[[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' '), t['addr:city']].filter(Boolean).join(', ');
+  return {id, name, lat, lon, t, arts:classify(t), kids:isKids(t), phone:firstPhone(t), addr,
+    hours:hoursText(t.opening_hours), web:t.website||t['contact:website']||t['contact:facebook']||'', city:t['addr:city']||'', dist:hav(center.lat,center.lon,lat,lon)};
+}
+const nameRe = new RegExp(NAME_RE,'i');
+
+/* source 1: Overpass (complete tags, but the free servers are sometimes slow) */
+async function fromOverpass(){
   const q=`[out:json][timeout:25];
 nwr(around:${radiusKm*1000},${center.lat},${center.lon})[~"^(sport|leisure|amenity|club)$"~"."]->.a;
 (nwr.a["sport"~"${SPORTS}",i]; nwr.a["amenity"="dojo"]; nwr.a["name"~"${NAME_RE}",i];);
 out center tags;`;
-  let data=null, why='';
+  const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),30000);
   try{
-    /* ask all servers at once and take the first good answer */
-    const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),35000);
-    data = await Promise.any(ENDPOINTS.map(ep =>
+    const js = await Promise.any(ENDPOINTS.map(ep =>
       fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal})
         .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-        .then(js => { if (!js || !Array.isArray(js.elements)) throw new Error('bad'); return js; })
-    ));
-    clearTimeout(tm); ctl.abort();
-  }catch(e){
-    why = e && e.errors ? e.errors.map(x=>x && x.name==='AbortError' ? 'timeout' : (x && x.message || '?')).join(', ') : String(e);
+        .then(js => { if (!js || !Array.isArray(js.elements)) throw new Error('bad'); return js; })));
+    return js.elements.map(el=>{
+      const lat=el.lat??el.center?.lat, lon=el.lon??el.center?.lon; if (lat==null) return null;
+      const t=el.tags||{}; const name=t['name:he']||t.name||t['name:en']; if (!name) return null;
+      return makeRow(el.type[0].toUpperCase()+el.id, name, lat, lon, t);
+    }).filter(Boolean);
+  } finally { clearTimeout(tm); ctl.abort(); }
+}
+
+/* source 2: Photon name search (fast), then one Nominatim lookup for phones / hours / website */
+const TERMS=['karate','judo','dojo','jiu jitsu','krav maga','martial arts','taekwondo','kickboxing','muay thai','boxing','aikido','kung fu','capoeira','mma','קראטה','ג׳ודו','קרב מגע','אמנויות לחימה','אגרוף','קיקבוקס'];
+const SKIP_KEYS=['place','highway','boundary','railway','landuse','natural','waterway','building','route'];
+async function fromPhoton(){
+  const dLat = radiusKm/111, dLon = radiusKm/(111*Math.cos(center.lat*Math.PI/180));
+  const bbox = [center.lon-dLon, center.lat-dLat, center.lon+dLon, center.lat+dLat].map(x=>x.toFixed(5)).join(',');
+  const lists = await Promise.allSettled(TERMS.map(term =>
+    fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(term)}&limit=40&bbox=${bbox}&lat=${center.lat}&lon=${center.lon}`)
+      .then(r=>{ if(!r.ok) throw new Error('HTTP '+r.status); return r.json(); })));
+  const found = new Map();
+  let ok = 0;
+  for (const l of lists){
+    if (l.status!=='fulfilled') continue; ok++;
+    for (const f of (l.value.features||[])){
+      const p=f.properties||{}; if (!p.name || !p.osm_id || SKIP_KEYS.includes(p.osm_key)) continue;
+      if (!nameRe.test(p.name) && p.osm_key!=='sport' && p.osm_value!=='dojo') continue;
+      const id=(p.osm_type||'N')+p.osm_id;
+      if (!found.has(id)) found.set(id,{id, name:p.name, lat:f.geometry.coordinates[1], lon:f.geometry.coordinates[0],
+        t:{name:p.name,'addr:street':p.street||'','addr:housenumber':p.housenumber||'','addr:city':p.city||''}});
+    }
   }
-  if (seq!==loadSeq) return;
-  if (!data){ status('שרת המפות לא ענה. נסו שוב, או רדיוס קטן יותר.<br><button class="showmore" onclick="load()">נסו שוב</button><div class="note">'+esc(why)+'</div>'); return; }
-  const seen=new Set();
-  all = data.elements.map(el=>{
-    const lat=el.lat??el.center?.lat, lon=el.lon??el.center?.lon; if (lat==null) return null;
-    const t=el.tags||{}; const name=t['name:he']||t.name||t['name:en']; if (!name) return null;
-    if (t.shop || NOT_DOJO.includes(t.amenity)) return null;
-    const k=name.trim().toLowerCase()+'|'+lat.toFixed(3)+lon.toFixed(3); if (seen.has(k)) return null; seen.add(k);
-    const addr=[[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' '), t['addr:city']].filter(Boolean).join(', ');
-    return {id:el.type+el.id, name, lat, lon, t, arts:classify(t), kids:isKids(t), phone:firstPhone(t), addr,
-      hours:hoursText(t.opening_hours), web:t.website||t['contact:website']||t['contact:facebook']||'', city:t['addr:city']||'', dist:hav(center.lat,center.lon,lat,lon)};
-  }).filter(Boolean).filter(p=>p.dist<=radiusKm+0.05).sort((a,b)=>a.dist-b.dist);
-  render();
-  fillAddresses(seq);
+  if (!ok) throw new Error('photon down');
+  const items=[...found.values()];
+  for (let k=0;k<items.length;k+=50){
+    const chunk=items.slice(k,k+50);
+    try{
+      const r=await fetch('https://nominatim.openstreetmap.org/lookup?format=jsonv2&extratags=1&addressdetails=1&accept-language=he&osm_ids='+chunk.map(x=>x.id).join(','));
+      for (const d of await r.json()){
+        const it=chunk.find(x=>x.id===d.osm_type[0].toUpperCase()+d.osm_id); if (!it) continue;
+        const a=d.address||{};
+        Object.assign(it.t, d.extratags||{});
+        it.t['addr:street']=it.t['addr:street']||a.road||''; it.t['addr:housenumber']=it.t['addr:housenumber']||a.house_number||'';
+        it.t['addr:city']=it.t['addr:city']||a.city||a.town||a.village||'';
+      }
+    }catch(e){}
+  }
+  return items.map(x=>makeRow(x.id,x.name,x.lat,x.lon,x.t));
+}
+
+/* run both sources at once, show whatever arrives first, merge the second in */
+async function load(){
+  const seq = ++loadSeq;
+  status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ');
+  const byId = new Map(); let done = 0; const errs = [];
+  const merge = rows => {
+    for (const r of rows){
+      const old = byId.get(r.id);
+      if (!old) byId.set(r.id, r);
+      else for (const k of ['phone','hours','web','addr','city']) if (!old[k] && r[k]) old[k]=r[k];
+    }
+    const seen=new Set();
+    all=[...byId.values()].filter(p=>{
+      if (p.t.shop || NOT_DOJO.includes(p.t.amenity)) return false;
+      if (p.dist>radiusKm+0.05) return false;
+      const k=p.name.trim().toLowerCase()+'|'+p.lat.toFixed(3)+p.lon.toFixed(3); if (seen.has(k)) return false; seen.add(k); return true;
+    }).sort((a,b)=>a.dist-b.dist);
+  };
+  const finish = () => {
+    if (seq!==loadSeq) return;
+    if (++done < 2 && !all.length) return;          /* keep the spinner until something real arrives */
+    if (done === 2 && !all.length && errs.length === 2){
+      status('שרתי המפות לא ענו. נסו שוב בעוד רגע.<br><button class="showmore" onclick="load()">נסו שוב</button><div class="note">'+esc(errs.join(' · '))+'</div>'); return;
+    }
+    render(); if (done===2) fillAddresses(seq);
+  };
+  const run = (fn, label) => fn().then(rows=>{ if (seq===loadSeq) merge(rows); })
+    .catch(e=>{ errs.push(label+': '+(e && e.errors ? 'timeout' : (e && e.message || e))); }).finally(finish);
+  run(fromOverpass,'overpass'); run(fromPhoton,'photon');
 }
 
 function visibleBase(){ return all.filter(p => showKids || !p.kids); }
