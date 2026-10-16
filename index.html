@@ -221,7 +221,7 @@ function waNum(n){ let d=n.replace(/[^\d+]/g,''); if (d.startsWith('+')) return 
 /* ---------- fetch dojos (OpenStreetMap, free) ---------- */
 const SPORTS='karate|judo|taekwondo|boxing|kickboxing|martial_arts|jiu-jitsu|brazilian_jiu-jitsu|ju-jitsu|aikido|kung_fu|wushu|krav_maga|mma|muay_thai|kendo|iaido|capoeira|wrestling|sambo|tai_chi|wing_chun|hapkido|silat|eskrima|arnis|kali|systema|jeet_kune_do|ninjutsu|kenpo|savate|sanda|sumo|kyudo|grappling|hema|fencing|kalaripayattu|bokator|lethwei|kudo';
 const NAME_RE="karate|judo|dojo|dojang|jiu.?jitsu|bjj|krav|taekwon|kickbox|muay|aikido|kung.?fu|wing.?chun|capoeira|kendo|boxing|silat|eskrima|systema|ninjutsu|kenpo|hapkido|sambo|grappling|martial|קרטה|קראטה|ג'ודו|ג׳ודו|דוג'ו|דוג׳ו|קרב מגע|טאקוונדו|קיקבוקס|אגרוף|אייקידו|קונג פו|אמנויות לחימה|אומנויות לחימה|ג'יו|ג׳יו|קפוארה|הגנה עצמית|מואי תאי|סמבו|וינג|לחימה";
-const ENDPOINTS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+const ENDPOINTS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://maps.mail.ru/osm/tools/overpass/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
 const NOT_DOJO=['restaurant','cafe','fast_food','bar','pub','pharmacy','fuel','bank'];
 let cc = null, loadSeq = 0;
 
@@ -229,25 +229,26 @@ function status(html){ $('main').innerHTML = '<div class="empty">'+html+'</div>'
 async function load(){
   const seq = ++loadSeq;
   status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ');
-  const A=`(around:${radiusKm*1000},${center.lat},${center.lon})`;
-  const q=`[out:json][timeout:25];(
-    nwr["sport"~"${SPORTS}",i]${A};
-    nwr["amenity"="dojo"]${A};
-    nwr["leisure"~"sports_centre|fitness_centre|sports_hall"]["name"~"${NAME_RE}",i]${A};
-    nwr["club"="sport"]["name"~"${NAME_RE}",i]${A};
-    nwr["name"~"dojo|דוג'ו|דוג׳ו|קרב מגע|אמנויות לחימה|אומנויות לחימה|karate|קרטה|קראטה|judo|ג'ודו|ג׳ודו|martial arts",i]${A};
-  );out center tags;`;
-  let data=null;
-  for (const ep of ENDPOINTS){
-    try{
-      const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),20000);
-      const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
-      clearTimeout(tm);
-      if (r.ok){ data=await r.json(); break; }
-    }catch(e){}
+  /* light query: first take only places that carry a sport / leisure / amenity / club tag around the point, then filter that small set */
+  const q=`[out:json][timeout:25];
+nwr(around:${radiusKm*1000},${center.lat},${center.lon})[~"^(sport|leisure|amenity|club)$"~"."]->.a;
+(nwr.a["sport"~"${SPORTS}",i]; nwr.a["amenity"="dojo"]; nwr.a["name"~"${NAME_RE}",i];);
+out center tags;`;
+  let data=null, why='';
+  try{
+    /* ask all servers at once and take the first good answer */
+    const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),35000);
+    data = await Promise.any(ENDPOINTS.map(ep =>
+      fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal})
+        .then(r => { if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+        .then(js => { if (!js || !Array.isArray(js.elements)) throw new Error('bad'); return js; })
+    ));
+    clearTimeout(tm); ctl.abort();
+  }catch(e){
+    why = e && e.errors ? e.errors.map(x=>x && x.name==='AbortError' ? 'timeout' : (x && x.message || '?')).join(', ') : String(e);
   }
   if (seq!==loadSeq) return;
-  if (!data){ status('שרת המפות לא ענה. נסו שוב בעוד רגע.<br><button class="showmore" onclick="load()">נסו שוב</button>'); return; }
+  if (!data){ status('שרת המפות לא ענה. נסו שוב, או רדיוס קטן יותר.<br><button class="showmore" onclick="load()">נסו שוב</button><div class="note">'+esc(why)+'</div>'); return; }
   const seen=new Set();
   all = data.elements.map(el=>{
     const lat=el.lat??el.center?.lat, lon=el.lon??el.center?.lon; if (lat==null) return null;
