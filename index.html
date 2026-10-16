@@ -13,11 +13,11 @@
 <meta name="apple-mobile-web-app-title" content="dojomaps">
 <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700&family=Secular+One&display=swap" rel="stylesheet">
 <style>
-/* Layout: logo on top, the chosen art, a searchable list of 230 martial arts, optional "where" field, one big button that opens Google Maps. */
+/* Layout: sticky header (location, radius, filters), then a plain list of dojos sorted by distance with call / WhatsApp / Waze on every row. */
 :root{
   --bg:#fbf8ef;
   --panel:#ffffff;
-  --line:#dfe5cc;
+  --line:#e2e6d2;
   --green:#4e7d1e;
   --green-hi:#8fb23f;
   --green-soft:#e7f0d3;
@@ -28,94 +28,96 @@
   color-scheme:light;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font-family:var(--font-body)}
+html,body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body)}
 button,input{font-family:inherit;color:inherit}
-svg.i{width:20px;height:20px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+a{color:inherit}
+svg.i{width:18px;height:18px;flex:0 0 auto;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 :focus-visible{outline:2px solid var(--green);outline-offset:2px}
-#app{display:flex;flex-direction:column;height:100dvh}
 
-header{display:flex;align-items:center;gap:12px;padding:14px 16px 12px;padding-top:calc(14px + env(safe-area-inset-top))}
-header img{height:58px;width:auto}
-.brandTxt{flex:1;min-width:0}
-.word{font-family:var(--font-display);font-size:30px;line-height:1;direction:ltr;text-align:right}
+header{position:sticky;top:0;z-index:10;background:var(--bg);padding:12px 16px 10px;padding-top:calc(12px + env(safe-area-inset-top));border-bottom:2px solid var(--green-hi)}
+.brand{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.brand img{height:44px;width:auto}
+.word{flex:1;font-family:var(--font-display);font-size:24px;line-height:1;direction:ltr;text-align:right}
 .word .a{color:var(--text)} .word .b{color:var(--green)}
-.tag{font-size:13px;color:var(--muted);margin-top:4px}
 .install{display:inline-flex;align-items:center;gap:6px;background:var(--green-soft);border:1px solid var(--green-hi);color:var(--green);border-radius:999px;padding:6px 11px;font-size:13px;font-weight:700;cursor:pointer}
 .install[hidden]{display:none}
-.install svg{width:16px;height:16px}
-
-main{flex:1;overflow-y:auto;padding:4px 16px 16px}
-h2{font-size:14px;font-weight:500;color:var(--muted);margin:6px 2px 10px}
-.picked{display:flex;align-items:center;gap:10px;background:var(--green);color:#fff;border-radius:14px;padding:12px 14px;margin-bottom:10px}
-.picked .t{flex:1;min-width:0}
-.picked b{display:block;font-size:16px}
-.picked small{font-size:12px;opacity:.85}
-.picked button{border:0;background:#ffffff26;color:#fff;border-radius:999px;padding:6px 12px;font-size:13px;cursor:pointer}
-.picked button[hidden]{display:none}
-.list{margin-top:8px;background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden}
-.opt{display:flex;align-items:center;gap:10px;width:100%;text-align:right;border:0;border-bottom:1px solid var(--line);background:transparent;padding:11px 14px;cursor:pointer;font-size:15px}
-.opt:last-child{border-bottom:0}
-.opt:hover,.opt:focus-visible{background:var(--green-soft)}
-.opt .n{flex:1;min-width:0}
-.opt .o{font-size:12px;color:var(--muted);white-space:nowrap}
-.opt mark{background:none;color:var(--green);font-weight:700}
-.more{font-size:12px;color:var(--muted);text-align:center;padding:8px}
-.count{font-size:12px;color:var(--muted);margin:6px 2px 0}
-
-.where{margin-top:18px}
-.field{position:relative}
-.field svg{position:absolute;right:12px;top:50%;transform:translateY(-50%);color:var(--muted);width:18px;height:18px}
-.field input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px 40px 13px 14px;font-size:15px;outline:none}
+.row{display:flex;gap:8px;align-items:center}
+.field{flex:1;position:relative;min-width:0}
+.field svg{position:absolute;right:11px;top:50%;transform:translateY(-50%);color:var(--muted)}
+.field input{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:11px 36px 11px 12px;font-size:15px;outline:none}
 .field input:focus{border-color:var(--green)}
 .field input::placeholder{color:var(--muted)}
+.btn{display:inline-flex;align-items:center;gap:6px;border-radius:12px;padding:11px 12px;font-size:14px;font-weight:700;cursor:pointer;white-space:nowrap;border:0;background:var(--green);color:#fff}
+.sugg{position:absolute;top:100%;right:0;left:0;background:var(--panel);border:1px solid var(--line);border-radius:12px;margin-top:4px;overflow:hidden;display:none;box-shadow:0 10px 30px #0b214022;z-index:20}
+.sugg div{padding:10px 12px;font-size:14px;border-bottom:1px solid var(--line);cursor:pointer}
+.sugg div:last-child{border:none}
+.chips{display:flex;gap:6px;overflow-x:auto;margin-top:8px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chips:empty{display:none}
+.chip{flex:0 0 auto;padding:6px 11px;border-radius:999px;border:1px solid var(--line);background:var(--panel);font-size:13px;color:var(--muted);cursor:pointer;font-variant-numeric:tabular-nums}
+.chip.on{background:var(--green);border-color:var(--green);color:#fff;font-weight:700}
+.chip.soft.on{background:var(--green-soft);border-color:var(--green-hi);color:var(--green)}
+.lbl{flex:0 0 auto;font-size:12px;color:var(--muted);align-self:center;margin-left:2px}
 
-footer{padding:12px 16px;padding-bottom:calc(14px + env(safe-area-inset-bottom));background:var(--bg);border-top:1px solid var(--line)}
-.go{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--green);color:#fff;text-decoration:none;font-weight:700;font-size:17px;padding:16px;border-radius:16px;box-shadow:0 6px 18px #4e7d1e44}
-.go svg{width:22px;height:22px}
-.what{font-size:12px;color:var(--muted);text-align:center;margin-top:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.what b{color:var(--text);font-weight:500}
+main{padding:12px 16px calc(24px + env(safe-area-inset-bottom))}
+.summary{font-size:13px;color:var(--muted);margin:2px 2px 10px}
+.summary b{color:var(--text)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:10px}
+.top{display:flex;gap:10px;align-items:flex-start}
+.name{flex:1;min-width:0;font-weight:700;font-size:16px;line-height:1.3}
+.dist{text-align:left;font-size:13px;color:var(--green);font-weight:700;white-space:nowrap;font-variant-numeric:tabular-nums}
+.dist small{display:block;font-weight:400;color:var(--muted);font-size:11px}
+.arts{font-size:12px;color:var(--muted);margin-top:3px}
+.line{display:flex;gap:8px;align-items:flex-start;font-size:14px;margin-top:8px;line-height:1.45}
+.line svg{color:var(--green);margin-top:2px}
+.line .v{flex:1;min-width:0;word-break:break-word}
+.line .v.none{color:var(--muted)}
+.acts{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}
+.act{display:inline-flex;align-items:center;justify-content:center;gap:7px;padding:10px 12px;border-radius:12px;font-size:14px;font-weight:700;text-decoration:none;border:1px solid var(--line);background:var(--panel)}
+.act.call{flex:1;min-width:150px;background:var(--green);border-color:var(--green);color:#fff;direction:ltr;font-variant-numeric:tabular-nums}
+.act.find{flex:1;min-width:150px;background:var(--green-soft);border-color:var(--green-hi);color:var(--green)}
+.empty{text-align:center;color:var(--muted);padding:40px 16px;line-height:1.6}
+.empty img{height:110px;display:block;margin:0 auto 12px}
+.empty h2{font-family:var(--font-display);font-weight:400;color:var(--green);font-size:20px;margin:0 0 6px}
+.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.showmore{display:block;width:100%;padding:12px;border-radius:12px;border:1px dashed var(--green-hi);background:transparent;color:var(--green);font-weight:700;font-size:14px;cursor:pointer;margin-top:4px}
+.note{font-size:11px;color:var(--muted);text-align:center;margin-top:16px;line-height:1.6}
 </style>
 </head>
 <body>
-<div id="app">
-  <header>
+<header>
+  <div class="brand">
     <img data-logo alt="dojomaps">
-    <div class="brandTxt">
-      <div class="word"><span class="a">dojo</span><span class="b">maps</span></div>
-      <div class="tag">מוצאים דוג׳ו בכל מקום בעולם</div>
-    </div>
-    <button class="install" id="installBtn" hidden><svg class="i" viewBox="0 0 24 24"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>התקנה</button>
-  </header>
-
-  <main>
-    <div class="picked"><div class="t"><b id="pickName"></b><small id="pickSub"></small></div><button id="clearBtn" hidden>ביטול</button></div>
-    <div class="where" style="margin:0 0 14px">
-      <h2>איפה?</h2>
-      <div class="field">
-        <svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
-        <input id="where" placeholder="סביבי (או כתבו עיר)" autocomplete="off" aria-label="איפה לחפש">
-      </div>
-    </div>
-    <h2>איזו אמנות לחימה?</h2>
+    <div class="word"><span class="a">dojo</span><span class="b">maps</span></div>
+    <button class="install" id="installBtn" hidden>התקנה</button>
+  </div>
+  <div class="row">
     <div class="field">
       <svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-      <input id="artQ" placeholder="חפשו: קיוקושין, סילאט, סמבו, wing chun…" autocomplete="off" aria-label="חיפוש אמנות לחימה">
+      <input id="q" placeholder="עיר או כתובת" autocomplete="off" aria-label="עיר או כתובת">
+      <div class="sugg" id="sugg"></div>
     </div>
-    <div class="count" id="count"></div>
-    <div class="list" id="list"></div>
+    <button class="btn" id="meBtn"><svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>סביבי</button>
+  </div>
+  <div class="chips" id="radii"></div>
+  <div class="chips" id="filters"></div>
+  <div class="chips" id="arts"></div>
+</header>
 
-  </main>
-
-  <footer>
-    <a class="go" id="go" target="_blank" rel="noopener"><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>חפש בגוגל מפס</a>
-    <div class="what" id="what"></div>
-  </footer>
-</div>
+<main id="main">
+  <div class="empty">
+    <img data-logo alt="">
+    <h2>מכוני אמנויות לחימה סביבך</h2>
+    לחצו "סביבי" או כתבו עיר, ותקבלו רשימה לפי מרחק:<br>טלפון, כתובת ושעות. לחיצה על הטלפון מחייגת.
+  </div>
+</main>
 
 <script>
 const LOGO = "data:image/webp;base64,UklGRkZlAABXRUJQVlA4WAoAAAAQAAAA0AAAZwEAQUxQSKgOAAABsIdt2/Ip0f08Lww1NKOU3Qq4dithd9fB2N3dnYQda+vRtb2L3a1rxxJ2K23QvM9z/8Ew84v3e7/9MyImAOkV0RAUi9UuXVYcssb6+49suXmvtQYNWaZTFyxeQ1ARZKuIBkWL2mPZ9Xc68vLb/v32m99NnTzD2aIzTps89YvX33rstiuP3GX95XoGtKhBJT9Eg2JR7b3Onmfc9PT4H+ax6vN+nPDMLafsNKQPFpWgItkgGgQAQv8tj7j+qfF/cLFm0czc3Vvh7m5mMZpxsTMnjhvdvF4fLKoqxScaBAB6rtN8w7NfRy7qFs3cnVV2d7NobHHWhIdO23YAAEhQKTAJCgA91j/63o//4KIWzZy17W4xOknaN+MuGNobAIJKIWkQAJ3XOOzej2eRpEczZ926RSPJ+RMeOGywAlAtGlEBsMTOY96cQZIWzVn/btFIcvoTJwxSQFSKQ1QBLHvQgxNJ0qM50+kWneT0J49dBoBKMagCaNrrkR9I0syZXjcj+e2fhzcAQZInKkDjdrdOJOnRnKl2c3LBM7s2ACpJEwUw6Px3F5KMzsRbJP2ZXdsDmi4NQJdtH55OMpqzAN1If2YXQCVNqsASJ70ZSTNnUbqR9uAgQBOkCqx85v9ImrNQ3cgfj2kHTY0EYJWxP5FmzsL1SP5jDYikRAKw7NifSTMWszm/3QfQdCjQeNIXpDmLO3LBlR2hiZCAsO9rZHQWupF/b4ImQYFVHiXNWPRufGkwQv1JQKeTv6MbczBy0loI9SbAGk+SkZkYOWktaH0p9LDvaMZsjJy0FrSeFL1uIyNzMvK9vpD6USz/PN2Yl5H/7ixSL4pNJ9KcuWm8FFonipFTaMxPt7k7Q+tBFAfOpjFHjf/rL1oHigNn05inxptQB4oDZ9OYqe6zhkJrTXHgbBqz1fhCo0htBQz/ncaMNR4CrSnF2l/TmDfvdBOpIUHftxiZt85DoLUj2u4+Rmau8Z3uIjWjOJHmuUPnodBaUaw3w53Za/xvV0htiHR5jsb8dV+4I7Q2FGfSmMPG+0VqQjFkunsWOWcOgdZEu3tpzGPjJTWh2Gq+ey75e10hVRPp9ASNmeycNwxaNcUB7sxm46jqiXR9i5ZT73aFVElxoDvz2Tl/GLQ6gobnaRlF46hqKbac655Xr3aAVEXkbhpz2vnrWtBqKFafRs8qOg9FqM65NOZ15O2QKgg6vZ5dxne7Qiqn2Gg2PbOcMwdDq3Ehjbntvk8VBJ1fz7DIMVVQrDeLnl3GcQqpVMAJdGbYpKbKifyVMb+cs9aHVkix9Lf0/CK5N0LFdrQsM54LrdglNGZ45L2QygjCk3lmfLYdpCKKZb6n59mE3hUK2Mly7cflK6Q4n8Ycd87fBFoR4GHGTIvbVkbQ4yNaltF4HEIlFOvMoufaCZUJ2J/OXDu2MooraNk2CloBgf4n2yLvh1Skx8cZd3dFFKtOpWeacVw3SCW2WZhxz/SqRMAxNGZ65P0QtF1xLWO+/a1TBQTyH1quGZ/rA6lAz0/yLfJeCNqsWOEXeqkI2GJ+zt1Rmf3pzHXjqQiVOJuWccdWQnF91p1YCcG/GHPN3faAtg3dPqBlGxdsVpE+n+fcb2trO2nbkF/puWb8ZhkAKm3ZcEG+OWf95/o9lgS0Dfu6M+8/u7Q/IK06gpZzFkn+7wBAW3Ne3pFukbyuG7QVtzLmHUlzjusDXYzcWwLokY83QVrq/Dot/8jIRxpEWujyZjnwyAuhLXR9uxzQfdZQ6CKr/EAvBTS+2VMEwJCpZYHGY6AABk0uD/5xLxFgnWmlgc5jocA+kaXR+N9GCJpZHt0X7ADFyBJB482QsjGhD6S5TJBxZ4T9SoVxNPTkkvF8e9xELxHOySvg+lJB911xQ7kwnlM2Ih+SY1gqjW817l8unN+t1Fw2Zqw7slyQcZ/SweYDSobzkqG/08vFTatPLhvXrzmtbNyw0nelo/FNWsno8nbp6PBc6cBtjGXj9rJxIy6hlYurcUS5IA9BM71cNGPjBfTy4Jy9Ddb6o1xMGYQlv6SVie9WRtd3y4Tx7UbBPxnLxAsdFLeVici7EHAWrTwYL0LA3qSXiIMRMCKWB2ccDsUqU8rEzDUg6DOeVhaM43tBEJ4rD5FPKiC4i7E83AiF4kxaWTCeiICAfeklwRm3QYBi47n0svDTClAolv6uLBjf6AiBoNObtHIQeRcEgOBBxnJgPAkBgOIiWilwLtwaCiBgD3pJ+Hn5FhSDZ9DLgPGFBggAQe8JtHIwGooW9HHGMuBsRlgEitG0EuCcORjaQkAzvQQYX2iAtKBYbxa9DIyGokVB0yRa9jl9D4TF6bhS8MuK0JagGMOYfcYX2kNasY979kWOhqIVg2bSM8+5YNvWCLq+Q8s84/jekMVBcC9j5kU+DEErA06iZZ7zKITWKDaZS8865+SVoa0R9B5Py7rIf6ig1YKHGLPOeCq0dQEn0nLO+fu6bVFsMpeeccYXGiCtE/QeT8u6M6Foo+Bhxnxz/r5O2wKOpeeb8YUGSFsUf/qNnnFnQtFWQeO7tFxz/r5OBaC4jjHXjC90gLQtYA9zzzTnMVC0XbH0d8w05y8rVkQQnmTMs8h7RVBJxRm0PPO4B0KF1vqVnmPGT3pAKiLo+Dotz0ZBUFnFqCxzzt4AWrGh8+j5ZXyuI6RCgq7v0PLLeQQUlRbcxJhdxq8HViFgV2OG3QBBxQVNE2mZ5ZyzGbRyENzBmFmRzzVAqhBwID2znEdAUUXFsj/Qs8r4eX9INSDyMGNmjYKiqgEH0nPKOX3NaimW/YGeUcZHRaQ6EHmQMaPcdkdAlRW7Rs8n4ytdRKolaJpIyyaP+0BRdcEt+WR8t4tI9RQ7R88l58lQVF/QNJGWR8bxTZAagODmXHKeBEUtKobOo+eQcXyTSE0IGt+k5dFJUNSm4vQsMk5oEqmZtX6jZ5AdBkWtSvt/MWaP8dVOIjWjOJSeO+5zd4aiZgUDvqJljvExEakdCK7LHfdpa0FRw4oR8+lZY7wYiloWdH6NljPGD5pEagqKs7LGfc52UNTaalPp+WK8FYpaF3mAMVuMH/YXqTnFzgs9V9zmbgdFzQt6fuKWKZHXQFGHikuZKcaXe4jUx+Cp9Bxx/rQmFHUpeICWIW4LRkJRnwE7R2Zo5GVQ1Kmg63u07Ii8q6NIvUBxCj03Il/oCUUdLfsDLS8iXxoIRR0Lbs+MyJcGQFHPik3n0DMi8qUBUNS1oOFJWja48aUBUNS5Yn96LrjziQEIqHdBrw9oeeDkrV2gqH/FEZngnHtWeygSKNL4Ii0DnNP2AARJVAyf5Z4DF0AFiVRcxlh4Tm6jAakU6fQ3xqKj8SpoMiDo/yJj8f2yMjQZUPR/kebFRufBCOmAov+/SSu26NdAEwJFp7Hz6cXGeyEpgQI7TqQX292JgQQ0F909qUHQPZxeaHclR+RhRha48WyEtCiW+YFWZO57pWeL+fQCc05ZGZqWgGY6C9z4XAMkLYrN59ML7UIoUrPq1CJzzhueHEHH12jFZZzYT1MDxTUFtyKCJCZg2wX0wiIX/msLQNIiWOJzWoGRc65ogCQFkL8xFlkkr1ORpLTTU2hFRjPbE5oSAQ6iFxqNb3SFpEPQ/YIfWPRuuyIkQ9DvaRZ/5A2QVIh0e5LRC8/4pEASoTiDkcVvfKVDKgT9vnDLgi/7pUKxF51Z8FJDOkYx5sFTko6bcuGTnum4IQ+c01eHpuKmXLCt0nFN2Qg4hF4uFDsavWRcSmPJuJmxbNxQPm78v9XCEem4KRd+XjEdV+WB8dsBqQg4jJ4H3w1Mx0HlY7+yoVhvNr1krP1H6Vjr95IhWGISLQu+Xyod3T7KhC/7QVLR49NMeKF9Oto9kQlPSyoguI8xC57RhDxSNhTXlI2Ak2hZ8GxKTsuEJyUhh9MzIPJ6KBKpGLaQngOjUjI8E0anZLN5JUOw9He0ktHvmzwYk5L+X+eA8ZKUdHgpB5z7I6QD4xhzYK+UyFN5sHdK8NeSAcWV5eOy8nFlHuyblONoheeM2yUkYFd6BsxYDZqQPbJgelp2KxuKtX6jl4yVppSOVaeVjuV+KBmCTm/RSkbHN8rHW6Wj4eWSAcGdjMU3IymKm3Ngyippub34jB92h6Tk8hx4pSElAYfSi+8qKNKpGLGQXnCRNyRF0ONdWuHdmRQIHmIsvLsSI48Wn1+VGPyl8JwHIaREcUPRmf+yMjQlAcfTiy3yOghSqhg6j15kkd+sAE2KoPMbjAVmnLETBGlVHEDz4uL3u0CRWJFwLc0Kyvnc6lAkV9D+eha181KopAeC9if/RC+o01SRYgHuZyykyKuQKOnxLq2QjP8WSIoUg3+lF9Q7XdIUsIc7C9n543LQFCkuYCyqnxMluK245mySJEF4llZU3BkhSe2eL7CdSsecTaAl4/ulEhWeLSrjuPaQBEFxI2MxRV4ORZp2i15I7vNGJGulKfQiivxXO5EkCTq94VZAxt83hiLNivMYi8c473AoEi3S9C5jwXjkvCOhSLZi88mMXiAeyS93g0q6oBgxgW5F4ZH89bYVoUi6YrkHSTdPn5uRf9y3IaBIvEL3e51ktKS5Gclv/rwpIIrkK9B55GtGejRPklt0kn88e8zSgCiKUBTovP2d35CkmXlK3Cw6SU595owNA6CKohQFsPThj3zuJGnRzOvN3Syac9Hf3rnuoFXaA1BFkYoKgH7bXvj8t8ZF3aKZu9eYu5tZjMaWZ3/+5FX7rNkIAEEFhatBALQbuM3Jd7/8zXwu1s1iNDPzltvgLZuZxRjN2MrfP3/5wQv333BJBQANKihoCYpFGwZueuAF9zw74cd5C1nj8//4YuLTD1964o7rLNkeLWpQQbGLaBC0GHout8Hmhxw59vbbnn379fd/mTJlyuSpkd4amz55ypTJU79+4423H7/ljmuOPGr3DdZq6hXQsmhQEWSiqIYgaGVDY6eeawwePHjQn/ZsHtnK5n3XXWPw4EFDlu/cuTGgtaIhqAhSClZQOCB4VgAA8OsAnQEq0QBoAT49GopDoiGhFiq12CADxLQEOVjKvV3ID9n/f/3A9mivP33+7/rT+6fuV8rezXr/zDegP+N/gfyo+Yn+y/6/+Y/u/wz/TH/Q/P/6Bv1p/YP12vVz/fP+F+TPwG/n/+X/bX3lf97+zPuj/r/+9/X7/YfIH/UP87///XS9j//Nf+f2BP6N/rf/V67f7l/935Pv7J/yP2//5XyM/tP/+vYA/+/qAf/DhQPxL94Hi390/Hf9v/737T/kfzz9+/uv7Tf33/4/6f40/7/yVdHf9j0N/kn3R/K/3f9yv7/+6Hyl/w/8f+43oH8av7P7ofkI/H/5n/if71+5v+D/dD6f/ov+N/me/C23/N/8T/KewR7K/SP85/a/3H/y37vfRf8d/wPRr7H/8X3Av5z/Q/87/c/3M/yH//+sv9P/0P8V5Qn4L/af8D7pfsB/m39W/1v+G/1P+m/xn//+2z+u/7n+f/2f/g/0f//9+/6T/kP+x/l/9X/4v8r///wH/lP9L/0v93/zf/X/x////8X3of+L3IfuH/8/c+/WT/bNsby4i4RL6harPgUJ//rkkj9jxwbEhosC/SUGqR3eiSV/0hx9LyzQSORS1XnHIKuAWYAUh2dhpVxTWsBTrqDmDA7/2D2sPDUnoRRFbnykX+z8Ybi492tg244LOH1J3Nor9QNanVw5T3Klf1YObOBiTGm5N0CmfW9WGqoCQ/87g7TqWCFaJZQMwwmTgqoCWL/UVZRKzToI36KLDP5I7LDn4Wkpiu8/4tBuv1MvUSocH33nO7AvZDQEnSQBp2hMZmuqOAzAuWv0A9i15u5odupjtVza/CLRITVmB0v85fNNrDhg6giVFH9s7/StN/LseIyBa7KyWnGFB1bnhXpUsJLxUM7ZxpXvF+l13Uq4Un++Dt0jwcqgsf3d3yPWe5o/upWiJgfmwdRrTfMTZgdCD28uoYSKqJCdJXLhbCMoe7f/76JDxz/k/SKhUx0bR0FAP4Kf6qBem4HWijOy0nudc2RCyxEjpEPb2I8vJcd1rfHI/UYteWwc3hBh/y88PdN2ta1vj2FKikjZi8+b0C1tNn4ddpyP5RXqA/hcZ8i2+okHbwhAX44sNy3MSZM0vCt6mXJE9kdWteYmI011FzMneBf8ci7SSWUM8diEbxJkdejXu0i8jPnTXJa08o6PwMySwwNqFmdEamW6mrYHbgNj6UHWHqzHfgRgg3U1RZ8nHa2mzTXH3LIKa7IPpLSOXO0Bgey+uxAJQ20m4fDanVur2CW9ST6qKiN1GpjtX8N0bSj+kgZ0FR+55vT4X+wlQ53mvdY58//STFMgAQo1hicJzAzycY4OLPleag6JrVQfARzyYv5Q2ttY7BIcAz02bRgN6TunQ+RVi05uZ8fH6tBTnICpytDIA3dnLkHUw/3NKMvCEo6IkkuhqVu+uh1vkFkWsfpMZ3fTCV72aPwHZhSuqPrxwmgTABV0sBOzq2siFktocudURIiHAfy9C1P/lp70s+oMNvIn8T8Rq0t0947qufB1cSMs1caT6x0VOhFVUjxy1d1w1cHt4bcEQ/J/JEGC4CsF/L8ujwsvzn/c0O3CguVtwgYbIt5+f1HxsdmDj71pLdc7WB2H+BcNnsH7/1wr7fsXVGe55XiR+leg1AHTV/6uwQ6YhoxIkYFGguktNiJaihl1M7xFpKY3r5HWfTz9Ht9lJOGPrqth2Almdyo9uRqdkwjAFuOBztnZwXOIpI7mkkKuo3S9bI5n0L9DtRnU+man7TSMmtvE5HjUdye8m8ASLSkilFbRY+JOmUeCtHAXBoRNkqELlsdkJbrjX+JIvHolfj5v4uY9liGNTjVSrgAQMCc4JphA3rnQJqqWLQRLHXdmoaEOX1a9cOqEE9ievylgSaSfyoDM1a7xpvTBrlEQdu3BgcJV6nLJ0dFimragUSLSnZgxVuehGo2TUJud0M6gIx+FFGTRYOPGqcqjGvTMu3rs69sMl4x+u68RPT/yJwJwlNdx1lDHv1h2ptkjYCoCqSlK9HS3tIdAD9FaCQD7G0kuqbi0vrinG/7Drh1V2kQojWvDcJ9W/tU5FlAc5zh5K+2vh1omQe9JQCYbNgINsiY0xhiXOTvWehrqHB04MhX5CChDENEItZ3teMUfKq9ALetpY/0DvpxookVUsV26ysiKXgE0ZiT9+iZsvV9QWjCT5BVWz7fyWpVNnIoV+tWZza/06RlSw3Cvoklcxghdyii7s2za+DbKY6rejZLj4kLR8bJDwP2NeMYmxt0a0tiBM9eKmjLjWfzsomTFUbWPkRvBSMaDH+v3sepVnEX9xxeMop4+CVyFRkgEQy101U+CeU0K6SMCeNcnpexHw+4ClIzGQBVsBV4/xzrjGVg9MgZhBsmpoYx93+IHucMUp+nMazC3UxdfQvQYKW5wa12cMr62f1w8qV+a4yR4jzObMFtD6B+hdhVycRZ+80hhUz/SGMYwKpi+4nmO/55ZScs2bvfaNfOit/WiBz0VuqAWGWLcipJjew/QAP73kOpP/AA0lYlb466uPqGqJpmznEqQKrDJz5mve5VYvN3l7wT/RdWGIFZ1CrnJdX32yQlCpoYh5tjjMsf/uZ7iWYetMpPkIVOiKBW3EMyrFE/jPGXyVKfIly69POPF+9SgN0NQQZHfSt+TFTWizui+N6TX/kNwl8CFDy2yU/e66WUZA5bidphwY0ozJNdLCpPUxq69nhIeFlxRd74UHaJjDiLSPRrvmZh42OkkWWWxSCgs7z1xjC0692s80WB7NNwK7bxzytbhItoL/5i+jce/TL7GbKNW8gBc7cHjXMiUPaT+UmOOBKJkeD53zzN42hbB8XuqtV0E6xu7D9q7WUWUyyglltoPJn4daYaLEy6JPGXyH0/P6yzdxCp8H++WaeWQ/iXifphbk9xZFMdECFgzcx07R91QDeMzhmmOBvUwTkNyMcdTuh2k6ZNHKgtOLt08hPp3IVtZJYyjAqhFXqNEVBYodahZoopRihqVQGFnkPS6mmkkLkk/knaGOyV2wA2ejzp6YrSRXhEZkmmxpyzJxGEUALESZoylZqxx1f1Rq3OfORsMxz96pVJhFa0OVpNgW1YOcQm0xBTopROUI5u0BPTLzIqvmIsffZRG4FoN1PuqvkcRAu5gy/gUw+nFEgblI7ozR/4iy23w6eu5aLbTasHv/bl0qyGnmJkMs15t+ixvF/66IMDGMYQG8pTu+YYOcGIC2O8/yQQL9yrgsrEXvpfDVZ1tUJaZNhHlNkSMIg5DClvPf+9oi1eH+/4pA92mAe3bCayBoYsrzTc5SFMX67hu4uVI5ixp4H5fTP5UcLykxvyAr/M6hS0c4EHMSLw+2NhoN480B2dYFdb0nrVCyR3r4svXqhBZd1KrE+Woo1iGBFPcSZtSRmHkDEKLProZacoW5jeHM3qyMBQelI+OKqHY96kiQPQefKL+b3Wx+mav2XSdCKyixxU5gNvCez1PTj5ruwkzDKZBlk0I7KxmLvTaEWLVToMv/J9uDVQNRCilCaQSeOArC0y1GrmOQMGk/lFWetlvme/hmRqNJ94LTDyhb1htIDORXacvDX4SYVQRceQ1PsbOClzJ8/pf0stEzLG42+wHKWZnP9M9eH4jv8ssIvwU068MbmYKxUlRitI/Zl9DG21hIXqsSkbzEbCA0tUKHTR9iRdYknH7oQ5qNhrAdOGZ8mgwK6kNCAWk8rhpxAnaRSzKx/H6ots0w4tZr45aS9pB+jUlTSLN0eDGj3AwJTAilpk/5muBg/+QXnPehQectyePIsGGKE9D825bGc9KJDyk5pDunZoHOmPOFVT8dn4PhOsJsFquiuFHrIxe3WPF9KlUx7trxvQ9omDLYra/7RSQKqJHBlt0IL4Lf52dVIZXtpKFwrPD+AG+2Ti5MX6PWFsxrST50LtjsEYyE+03wCnK8TypIwWmwVMNlgNpSWgnFTQhtn3mYUCFDijnfjdvlxn2xqyImWTZq8K0/kY7YXycyPIfKz/9odVe8YlHsCePrJ6LDREOvt0Bj2o4F5PJugjgGuIw4lyNRK0+LhV7avMgnUo22+jpZPJbaUS3h0X0sdiiwg/KzvAujd4wlnbzg9Fo9AgJbZSxYux2CmTf7JjEji6EHSlcuaEVq3ymNjnuzSHlrGA6trh40X2F2pdGnpnOFWm2FTF5ZNOKr7E0dcb1IAMvtLM5/Rlz23/W4HbQXBGt2SOZH/0WuGYPZlPgmtjaVUqsiZJz+GyrLGCfUKb0l6vFoojU2XUXxqFPMZ1ZAqcsuGWuimEKOCpKz0rq+5zwankA3dacEBQzbTZgB0EoyJZneD8MQAe10MEyyfuIfvGfHfLFSFLorWib4z6gf1j9he1wkTiVt8DWlaz9AFuLB1aYJZZj/Haiu6rvNtAmK9ppGJSSEjlZnzI0pR4GD5PTsdQTFTCAnAmHnQDgs7C8dcsR1O+k9B4qqXZOIDi3Z0OGWZ/1pne+zR2t6Qtyw/NAWxx0ec8UEFrpca2s0J2al/uTTJTEcPpwHLexEYk/CAoD687mgxYd3dRy9mUvRu7s222Q/dkaA5jwHB971+gf8U6Ht0BflNQ0iBwPPSEz09sfxGHTLIG7ROwsb4uCGGaU0HfnAFuHmjk4pRBErxmWi6PQ3gA8dHVtZ0ebM0Mtsj3QUv1tm0TKVIZ4x73XRY6vDN/II0v4dqwqbygv3Htuc+rFwKfVh3qyA+4C/PV2qSwZPAsahuDgwQvU659egC8mlaxFPkXq+MC6ibOJSIOcRA151p7EiFneV4HPIwwIRcHbww5Kq/eUha+LoOdLT6Gd+T+jmr+RPTkZYnNrh7T048KcH0jHZJEtY5UyrTTRrFX7X65HzB4aFdlIOriRfJDGXxr831UPVUq+t9HKPb3qtV83ZimnO0q8smraelQ6gsX4LH9wcJAmnpoVGvJtnGEK4QFQcWcjIzMKotV0NMOzl6bfpRrUqEE0gJOl+TTnJfbSvEqxZI5ArOvUALf5o/I4aD6ZnisycHPkjaKS7945st8HIqR4/SGDfXTcoliBXdYRINAPnUtG7nvx22aAoiyQbIwN+dEDDtpDyYFhdwCJS6l939m53NTPVMSPRWWmDcpXRT7izXkPUZv46XgnPP7T+ttJjsK1drI50Oh//MRVBUNxLtCol4oPD2nDFCMSFu9Dk51KDUO1txfmlEQcoQyvvAaDkVEDjtAivIvUsyGLUKFVh9n8aTZrxKlxSqBlL/CEC6/YsjR/z8faiiqdgeTlpjYpj/up89a8EfZYhB3Ycf8dXXezILORHCITWzDGiLrTDuq+XNUCRxA6i/HnqnBXBOFnpDPaqGPise/CrxOVDCtMmEZDuWYlZVV0s9o1CDBaBSfStfwg1oTN808isv50vYCPbPUHn4Uj9Hj1irm44EXG5UXMJe6s2P6zNQyX+cKPF9u1R4h5WtbevvFUvGbiHN/ELsMCXe/axRXpIhafFW6Q6iEBupaE5Lsbrk8nhEi5TuB1q0aqhO0cRKhylZM2p9jdY6xqf+S0JEmxtqbI02TNdb8yBVmIkcxYxildbSmME12/WyI8fo9vDVDtSOdS5KTjaZv9Tuv0kryx/V+eYJyvC0YA0oztL5HEqjibMIViZ1uvhYh+JFu9BRKzga2fUnqsq9IA8pUpKaHYDJgE44opR+b/jbbCX+lWmNRyBNm4gEVCx4HDNjxaa+x8mHINNTKjzOqBYstarPJlvb4GdOoVfePk5JnJOGVSr9MZ29SkYjvNtISZlmECh9FKMparLrZb4gfDGMz8dokJXyWA7oWWMPpJfCidIr48d3f7+u2KlzE9jtQUjBCXa0Ppf1aVrRb0ZKBGnzS99sIyln70rhrQ+QBIBltR6DrjlKGBQaf1zyvTqcJOpzglQSqcijiS7mHBvX2fnBcaEjLU+NY5B/oGgPgTlnJAymAnrxypXCXRnq3cifbH2M3aGGyU+cbKf6Gx9BPv/gdPpAvpOwX+E9jV+5WP9SkSwm5kBI8hnf+iV/bk/URMEr7f7HZXN1Comr9Q+AKNcAXRCLqoHhPodgxLVh4kif3DDlafV14FOT07sPRZABMX5AbwL+2nGvaqbWYrnGgg84I6UhX7c+QbjpHz4nTRb+7bkVYgdoLYUnFS27F7wahZnaj+4Ohz1C+a+ENpdNzRchOxRpmadqaQDd14ONRefMKGJH/CyMy9Yd8bYcqRyQ3xq2f5J34V+vpEEURm7ofq+CNuUgoGDJv1vDXK6QH4FrMU3CXIXwE1o9cztWlv+HPhUYpOvx9m2PJGGDdnOgT2DHBQqpqUzTv9zXlO1focdp+T16En4mrEin6l2FvQhitwKYF2+MRwEm9jJh6HJ+4FzdaGx+wfM6jw6+Ht7uSolummY/bG+CS9v0T07SBm3LtoKf0R5sQigAzjNk2PbuG3jdLtiFphA8aVgb/29V6RfcG5seR/FuptnJtaugzoONcVs4laJePfVWcTDxM7eAsjcSgQu4BHmT8/YWfwPWir2EtJ2Pa9PQF4mdx1Sh2lTWrfwpi2vu9kS8kkufhlg58lDon4upQUPVZGFLAAAmL89XziyllJkGF+yY2d63mK8DiikfhzUu2Km9yn1ZzETmjrLsmC53Ylgn7x//8NTEzEqpHgl+kHGoUnDgD02F7MlYCPNZYYoOcE+O4RQBMPx5VVelvcAKvR7TGOyLUtQc9/T11dpKN1JeXCKDqb8wL/9VkeN3nCV8NAnpq1QaS0CUuXxDPlnZOdAFbEhH6+ZC0B+3iLPqBhwI8KaHVn+L5XjiDVze5zUtuOoJRuyLxjWvNnT14ph1jAYxITyWBL7ZPdExytJz9T9KGFwJ9V2ZpyuOaztVppV76bAuORHIT9+MYMDnAHUYIywEnWJQ19pbWt1w5oU/IKI9dIPk+r1VoohjU8EM/0Kh592hJ5vX/JwjYwO19F4jplRj6v15YgJWSWEhMtbjjsi2uoXX78xGDCiGyGHqsyLKUaIneto2VP+nvonUt588yjnV045rZyPWw1Gqf7qxOkGd3m7fOF12/6RWAmBkK9SFKxavEl7ZhvLmE5xvG9HlQvwnukzGLxeF1iJ3c9dFxRJKDqCdoptTDSiosI9WaNBlFlg1ktkgsz+JuroijzjIT1QcUXZBJcnk6oFPZSmDwv1o1mujdhxv6WCN2emSN5wSc4/oRBawk5ubvmPCGPLtmgQi3EhLQiGxp9IMnkp4ZRsEovOOZ2ARLCMYD3cnQH/AX9xLvVUvcQJFDCrNknB++XEbkvQxCljowil7obMd7R4QdS5HUQQwU6m/SzLY9MofoNFz6WcPCARkIn3IH8nOUhwuPcnJw93843r3VJTwuLpxz632F4xUbzjxXwJuacTMGhCdGQp6xx5AmJuYggSrSV8VAi8q0CgRVPTqnwq+RhsLtH/yZ1V6oDhbuDXCh9UyE7RvSiFHQQtsm+xOGDmIOO0LZ+/XEq/ZsAZKnWQI/ESaA7M0Rs0kYa9j6bGsdOaUGVyA0AfmyAaU60jIFTaCeAymPDHEMZfCngSW70FiIWtG9gOUXDoJY7EnoMFNKA8QP3EVaHjTIkn25fCkskTFXD8IIuod+cu6XKlBfwOHqBbk6BmmO77m4IDnX+P4gw1imvMCPNWbRZFuE5+OnisxOlIVUgjE2qAyKSkKhlqbMJ6VVxpkcD1BbbKjR55kGPUeG1RLWJPqrKYxKTG6SBH6DbbR9dPR2/eO69LLhOCFrbOqa057DZNVra6Wy3Aq7o7KYrT0+QyzCEwXv5GXRqww/9DEb2wcMTuX2WmbN4nXgvzva5TlAi09ZQVIYSj2EQk5S3sERHGz6FGUdYGQiB4SEvaWNb+lmSabugt/Hp+d046E3ePkqniitpsUOCVthryJsFPAs911x5xA0PC9AUOTiG5CyUNbIWeqYA9u/zJFAG/XYTk5SLZSjWa+Ou44t3VHXknHS8zXbArZ7ARA4z1Ng4P/xx5FiSdJsNUujbl7lr5pOWYXSfL5QBpOuklLXm78SyBmg2IGb25vQSHCCi+CupxXNDy194kEgfAqX47dCkAyhKCBRw9zBwpgqbtRIO0syIzZpYxE7jxW6LPsZrkZgonG4OPWJbkQoVmFBSM6LgRG6kSK3xWQRBZXDIq0ivfTFBDRJrwE7FakZiOUqBd6Tua7DBPiHo3KYc1x9pZcKoyCkuhGWbwzUZc6993y3XeckkmHkKu+DpFKCkprVLsjsvtEgBkIyan7g2yMo4n2vG0zTyMA+xh1uJIVFAKdeBd6ebpHPB+fKDCc92ioyHc+bdqOGEemEi3mnx+iqiANYuS2wInxNnqtt+K7W5NMoxNNNruQ+krSTMkxYkOnBiTuN5tZEpfFq8ChMWsqgm5+lfMruKTPk77oMyZ59vjd890HRxDHpPzPLM4mZ6aIkb2xy957RLYTxJqAsNz47IXLI2xBuRvxKAtN5+nIDm+BEUFM3pXL3LMhTs2Wy6BQ4X8feCmWuZb2+6IOEATLqd8w6Kj7lpQuOyxoQOJsb9Eb4XJL7xFa19pgbPXO8apJ87DUSjqlg5qJinUfFnuhBmy9proKbXpnwE7TrLRrq7BHcA4Ra1zCIef+OVB3XU8AFgqO1QUuqXVBsIp1eXoV589WmV11Fx7ODhHTgiPS2A/KPkZrWnO7kT+2IN3ThTLsDYkfVPlzH2yHSPTuKvooxjqu+Iye9FKktghAADEk/Nbvh6rBTnpuLmOD07lZE5GC7BDapt6aHnX4OxCvNYsPpKFc3qSpKxvNiZS+DyjC1UKp30q4m0RdCdFL75Ukuo1xDnZEJm19kVFSCE64bcVL2ufdUHJHE70rXCQqBAt9af4pk1fPH15+6lFqgp7thHo+LbPoSL3LqBqAkiabdegmxg6jJo4xh+wZbKlwN0ZlN9eEntXFiLio4Y6HvEEDivaeLPzacH3mfYm1Qy8vKva9aPZvEPJtG0p62Z6b2gmlVuwCdhSPuvvAeMdSWb6TYXuZCGc4nzQWCFadLEY12ILExmR+9I3S/9YC5DMN4vXDFSQvjwMLOyH/VJ7n22OBqaZxwI6iyzBaTca6WIf7Wi1mu5SfQfdjNe/ueGnIt/mXS1TFQlJQUlMn1HdOxdS50DNf3MnbmfEvJl2dj2WIg0D4JGNVzofTnwKu+z7QYdtQNGoH86Xsfqs/v4YGG0NmbkFzjUnFRxIKHMJm1jhwfi+Ni/8ChmDcL7g/PNl55NMEdsug91MpDSEs66fBJbMbYsihnUVOk2K9ghlIUwpOwtEWIJTVFKyKbtyqB+7L56HHeAmZzSYzo0Z2Zb82oLv4qjB/EJhnLeCJ7zJmdmfxTTUXnPwrASV/aJLzPStcRXSbywzSeYCGcC/8DznxgNu5o/xxQD7hjULB2Etsqk/R1LMCxVKL2adUB1yPi3cC2hAgVN22UAIjIo2zprifCUou113WrcPyZqOislJ827tKANWD7dKNkgBdTDH9MMzY9+tM2kC5DPxWPTYfk4HW7EEQuIjr6ExtfQtOHL48VnIG4GeegYiWzTiM0h0wCb6YN1zfBuUA+zPqxrsBDWx68pOck81RzPyfv0a5OLAvILDn2NeRix+cIvyFBMFfzyvynlYOuEsPfofzpW2RtkhggXYQ43z2JHetA3u6UAq7QBVtIN956U+tJmuk3z2/9ylNOUTRcdwrU0kdNFRnWZHPDNX9GJBknzM5BgHV4ElSOqxvcu8PJEUZ3YdfD/8lGHg2g2LKg7nRusorWtAiY9OdG5ekE+v9aiO/J5zgZMgvDpBGwFmanrvn9XmV4sZkMfxXcnsi49FLOoLeFpvD7XKkx13HeMjwjn0zuwzOdM36bIC2LZVM7LHIqdXXhzs+lBy5cZ9acP39kLsDkSMorW6K1S0uRGHIFqWNcomCVcnjXvDVGVSIdnW9kYlOo07kxOxksJQlK7aHxGyOKHkEoypVI96nUGvRVMFBra1mERSZPU2g9s4tFN1gWrfolfv1yCGj3zCzDKEI7IASkhTNaxtBBbNduJ76Ue1YSygOe/Dlv4XADnvKTl4Wxlv4oRE+/gqzrb9romntkuwB4tXvgamPTS+d/qT5G8hTnFrakWxAhcaKaw7ivrwpEppxAuXZCVpSQXulL8FB6iNKspkY1DTrPdolqMbp6shUpzHtLGOZqCdz5YP/4RBOh7+lDP3+u7JPz6I6YdcO8V8JLQS76Lk9J2vvpr+Z+yEMn5SNCeJADcs2WkL+6QeTHK+Ny+GOwLxHXs7isOBygxSCDaLSne0ZGcKsp3MTFggFh/6h3FojV46YWM81AxqlvXK8AJAXhhEn11uy2dyBCPvDR9+bb4N9thkfs7zEjUyZr2V8vRhY2rgfTFsYqd9rcr1KTxNsCQwTevL3h4XNOlKbf3QGWvnoZZ5s6tbRFlvlWqFKlqW4O55F421/ssNWe3amBVYIBrm39vVJpG+YH9WclNR9VxM8gN5+C3FECyZERWQM9HtZW+E++t1029RenRsxIHt61r/BEKxuhcYVHxjeFouvmSzQ66yQkcHAEWDJUnmqY7fFAd2NR7Qf0WBmC87yFsr8clWqBubWtyaNtUY2XiY91ZQgA4JUTAjIoY+v/fG0Brqf2v3AcLrbsuBBABhUkemHSj+XCm0ywVQ4YTr4/IVG9rf86/yIsoc1GiSHpzbVWty3qhGkF8nnAHxbdD14bGfmanlH5VkHfl8z1usi4Gr64U7fMxc3Ah+K34kNdeuXItnkEs/f2W5N9Y2Y96JDY4UyFJpnQl67Q3YKJIkAHbrM4Fw0jTpfnqGGc20cxlN58H9DY5ZyKTHMNqUXT6c8fmbnbMXTOl2Dw2au1dKNKqGO6nQ6TVVzhRJdmFMi4px4u20wTFph02gy2dLoCWjBnK4msRQJJoftFZo/RAsMYkgZpU6/VsZzjw2YgLIbTnvRaU2Wzx9yIiZnKwyTPlSG9000XdMSqDV/zg40RcpU54MyYbwJHV9PAnyyB7+jyZg44+TOfe7RBfdmTd+f0uhdMATfDxorvqLXUMpmOAmtGitcQ3zG7vru+KGX1QTfsS5g/0YkHKI3Btb7msEOYeEIELf07FYtEwTHvlgQJ1LX5FTW9dHIoWDoG7PrFK7pby78x7ejiqY4C7SIkeKtd/9g0oI4w0GJ7W68XeIFca0aH9xQBGILne7Uq2niX2WaE/IF5wfaHiYKeVRSSmz6jcJJeV3jlPNJdnpsmoNfKtst8l34nUGiXVqBsnppr8Oee7+sIJkYQg4jixb3KEfnwKaDb27/w3Qs6KXfiSPyqvMrNtdolj6jUDIZOkk/TnnVTQuMeDZuoHBXdLb9WkIA7+ffs07aHQVeS/BinVOkXHl6KG2mLgiuFR+SL5NFqf36dep1mYD4r8RaDYtHefFW+JnwEbIGYOZYPWfbil9odeLqp5jJGK+C/G2DP0xzzN+8mRlVNMKhKkawcecvBoPZCJxP61rEw7aDEKBDFCevsNJXM2D/t33MXBm2mPfhCT4xoAWgTXXaC0WIeYsprMoFuAdwEuZu7eG52EsBKou9dEEQ6ESMaHUMF86XOOKrUWYV+OgxOWOkvEKN4JvmawC9173rprCTQ96mf0VCdk27Mi+SqJQzSMZ/Y08HHZk4xPajh7MSv8Qu6cX6wUyG1rW/u/Wqrq6R1eMjgsvyQK9dvp9ZijxdGCMtTPh5bJnaUJYP8+AihRs8mA/bU73KYzxuIGKXjCfWGNwx9Stv8LIrUqfYTM7sakqCoUnojMzGKPCiANaroFp903oygXGI48kD4qVlQNJeRoLGOeCzCud+zXr9hCXPhMgv/ADhG6Kb3PwHGhdMPCzdl35ORRu6+xDI1sQ+CH/JEiXbqDAIWVx30DJeQ6bLCHmV1eC7tS6w222IVmx/pjY/3nxItX7VwHL7P4YlncXJBdJ/4NdLDs7DCx2P/5ipxtDqQhfS/0NS/WS+VugegMop4d9dSH3EqcqsJxm5J0tTZkIBhyBD+DwNhWbSr3f2DjcrhHwuUfl9Z+PiFFMvmEAFfKXaiH+MXlBG/QCYo5Zpvnme+2FmiDZslV4Xi9g2ESR2S2eDGc20KhpbN+Jr8cf/U7OqNAJxNW7vq46hCxIMOSmG95mjNkXoKZwpLOKxLFpv8Yn2Vs0UIBo9gJsiBEahvpN7uT6Iv+zefVQsdtQBt8dnFf6rcbdfIbd+VqHctBEqgF8l8uz9AmY1U3NA7eTJ4azCL992fjMRVfT+v53qubDjnOR9U6x6ETi0h3BZ5G4Fmtbxx9m1ywMCbIwX+Rm8LQHJKE3IoPg8U8UXrEskJSWaNCAJWKv5IJzBUFpr6XpvXRWskqXv1yVSMLkY49FGJBqZiSXr+EJiQ4M4pLblQotbbr6xksFDozKwYWvH5ccHAg1Rn/lfgfKlreKV0SKep1MiD+ttMsWCk+qFragUG2aMfR8wsjtlvlzMn4YOy6wE67A8HGMa3hn6R6FZMPp2nxDDdCpLdzjvfCFDAZHdQnAXJds3WQD2NyD4kljFYHv53dPz4qew3WrLufSGj7Xwnain2xwIv3ZqFq3oKzkLH61lDrpf+yWDCLbxayZRbjz0iwx1piZOp5evgjZoBEZYqtrCI/Ooy8wYcoF0c8mhJHimK/JMoJHRJoFQVCQrZcyOg02+3khCjqlUzLuromrSFUTlkdjOl9xUPva/ZnRiEYn9AN/cjxVO3ecvkJmCrH4lE0mknYrWBKbNuhbTxmaMuj5G0lcytUcY76oLR1mcZwOd2hnRkqagxechiELxBH4hausRTswXzr3TPBAPrMIbyRr/4Hd4QCx5e+dTOU3cnT+dW1T211X6HBQ4XoUO8Dt/PEkbNYK9dYrYo31ClxBkTVEm85k95rgzQslc5+gZm1WSkNhrgf427sjSq8pXyWxWebMJw7DzvAKbIy4tyPl+xyBzsUjwZtZXtlD3zKCV+gJ7iA14clIzP4LEJO9mycMH6+6Pfn+sLpVZWYcQeqBrqt2vFVkwFC+XWrP6eD/C3TERoGBqrXWkn3RNHxhFuHJ6pfiPLZRr7i65dIhoyh4QSxnpczIbP+cHH+oYK8O2DhCbDjCqf9q/rFOGd2SNjR9lLkTDpvCepfYx4nN/ep3BTFYhXWhXffgT50wlgkOCpVo33se1lN9L7dJDfIg7dR0mma/g4jI4YQ+8Ru5ruh78vtUeQDX9nLicibvPx66k7M8qjrL2ZkZ0ow7IqTlnzt65pdcBbtDtHIFCmZ80c1fX2P2ztLwCNjZ0P2itF3eHyHgImBdS4KtA5NbpxZeq/SidZacw9btkCiICRhafxa6H+3HgG5xypfsjNFevbmyhG8l0b4H5EOww7ubuLgsOxFlRfrSENs0L7P+SwonqyOIhKKaxr42yU3XFaybtHpKmroj7EzQ/wJMSG6ArHAoogO1fOLE4OhnzJtUnfFGOMenoYBV4ufRbVW01FxcA706A2oRcpV0jMiWPkSg5lZtGyNuXgvZJAGQaDVwHx6BqII86hdM3/UyxSaQhV0A5JIHXG4166c+m38iwxP9SCj+iMbD9ozz0VSiPRFDtNj6CTGio0seqrnu4HPh4Waup9qwc30LJVHVcHxqBmSFQCETuDVbqoUVacdbW7m9/bWOBWi0iBYCz6mGJV6fmB1XKnStBhyPdPtYNU7cjQ4mZtitQQmt6T0zncZAEXiMi3jmQgu9rRvzZsOQf83Z/Ug4KQ3wwWQjStK7R1839YMEqJfnENcSVha4TKgRcmDu4LOOEY+LL00td38mAcO/NsYEV/ADySTo/AVFgY4Iz/g6tp7cRRH5X0UVUWDyalHXZ1j3xI/qPs+B12oLqZ21UJ3UqdThVhIdpgfIqJ3NuR7yjuGyUp5IW9AaiSJlB/AOSB7zPRJjVJ11e9zGfi4usTYGHbQQUAQ+IDQ0iwfv9r/ezZSxFrd+imd1DXJhBHqmEQmnoUj8r1TlRBir5onQMVyc+7hSRUeXGd6aGtWeTMV4Tsc+8LurPqpuDxlVXphz3IDHDE8iQPzK8hn4D88yjAL+gYvYHlII9+eXAXd4zXes3mZySgK/1C+9YsocWbC9MjbJloYfC4Ak3WHAViCw3FyMfu3lMwt81zsX+v009X/lGFr+EO4GGZjarHe9l0Cs23MIv+qE04IuZlVwmYQgnf8Q3Pc7dJfl8lPx8q3AtGInfventJTDjb1P24x8pjgTMymcYzNEskhqzcM0hMBE60jHUf1A+f2SrcLn2nRf16wrbxeE/xAP5SbTyaRfcmrw88zT2C6l/g5ULVtJinGd9+S2V4VfnsH4p1wOY9rtdCd3GxUWbqt/+YronnunK5rLFHVQHluVDxLb/wZKo6Rsit7bh7o6kxkZK45EZPIo4Jzj77klWvofw5aV7Eu71gEu1g9cFFPxIjRPz2gPfJNrVhyd0iHm3+86aQ7jPOyajdVKr15UbPo6p/7uii3e4WZDiR+2meZJXtlQPL3AT3xOVLDPQgKhNw3OM5jEmszC5xf6PhJ2f+yGMUQddl9fd4hvzvx4/J6L89PYWxCqUlctJct87hwbe3sTuFZoUM+Z1Imy7N18O/ULRyJXC78s6awAoTlX+2tIgIcWy1qUuK3KZPdjCBA6YvQD2qT64CfumWIhmLnv8jInM1KD9Qe1DrkEy6HGadLe/BBfDiWrcX1jO8/5LW+wB9AADagLnk4YI4fFbsSd4h3xJX+caE/C8d3YfCS/zwCr6hKVOss4Ja/a8ksojFJOKFe1+hHyzHxEJm2twKbvaw93JrQow16l/OY6tqAttE4S+UU9LGa//1n1f9c2mZf0CKkVmdumw14YljPbdylSvpR71ZENm6aWQ52vDBcKuuweemn/oOCXuBnZrDwBWQ0nHyjSM9VH7Wg7RRVMUjqB4/MVq29gawJ6OESFI7FRWfSNfOdsUidzaBwy9Ar3nhqETw5wLgwAEnrteOG5bdQTkoMpFvEul56nGz1KWovY2n2JE9Q7AQt5d9itiDGtQPYVWj/mW4ErXlARAKtNeFXUo3pZqnjJa2bFFCnwmRRpOKPfTxIexWkYobKnT1pS5iykb3pgQh3aVnxEHL5EgR3cfXwH+fYXcXiZ/PzlxJaMiH6lMFPfIuw0C526WJeZ1H3Jw9mp9OYDobXbmYEK6xtrkmom7+dmBHaLzTwf2j6DTidUj84b7iV8pzneezohpnMRdaQqyCBHCT1SYFRJehsxXPQxUgvaIwAKq1kKGBHWHH8C5RuLlbgVDFNA6r2b6nPLkd/+N5LNSepufLE+FmeeTS6KwDKFomNIMzFFDjbOy4K34K4g09mE8MhRPEkvju9jHJJC7AJhT8Xquc//f2jLXL+VyjrNpncJnGgM3kak4pe8z69m0wqyxRNTpvEiqer22HaXw6dUM0TVDLvrPJcdV/D2661LzpOt92gQ6lGqZc3s+X93A3CJ7Z9d8+KK8nfYrEpBOdT7XkO78DBIhj93EbmOIKRZuqgNEeZ70q/oa3OKc/mvLmCd6fime0JeNQ58X3pE7C/1/aHqPmzM4REETdcO2PDdZHS/q0vMEy3QD4uK+d+JymC6qzjHzsr8fhFYViGdFo2CBMaB5Rn7A7sJv/r1XI8D05s6tN7xdFcBUBQLk0pJZQl+i0g+YsBKNHxfTZW6GAIxJ8IBRFg2fvLA44W2W2R1FywtsrRIngEUDi1vOJu/BtOS4tCOEVFCZVaQ1DEqiD2O+Dln2aScTlRPodIaOniI1yB+N8rv7Q/JwKmW5q9Vz53J4BSHnBhy5FWzUsXX1AdnpeFB+V6dPJAV725ye5WgBJMopOW7rWJjMnpA9esC8d5R+g39HmxRdgYcjpDSYcmYrobIWnhs+qWhh4E2N1f33V2zQZq6i4eEopLo73JMiRUMRMY6lEXe1wYMyA9bSMjlXTSfXKZyHxGWDg60y82y9M4nzbu2kyk7HzuMWNMXTSc0YSff1QtlxTc+W6edNTgjPP33iCZxppI2c+fhBrpfeGP2FYHVKiiB7GTDJves6St7CCl+KP0mP344MnD0sXSuaeAbgvKGEsT1zoQYX6mx2tTtb5R/RQy8ahVTS8D93eHtnEWJoIF79XFeIAuesSVbGVlUYoey0VQXIJg5xTI2aWlv7nZ/o8x8oGGXDsbkoS+8Ka5Ra5YCTjigSKmu0hdffvg1ppJ9JPGNCGxTtFw72vPC2r+eHJSCoQPa6h7S2c3FOaxS5kOB9jSiKfw/xZK4xgNP3w/aVKLopSvGH7dPAXtBvYFQ6XU3jgugPTsETybbF8P4Ccf9P0C4eC/QEqySgbzXe2gutHpW9KceoGKOvm/0iPYLIK67S4rKlDTpOIs3RJeZIw6JP57fVVSMHazbITffAKmhtGFKxq+Qoe/iqhkvUxw2GpVY62RjxKNLMqzOSK9AGBl1ta1ujCVJamWZJSXl3U/Y+u4WU3KfZodmlTDqyvyGmjqKj5Zv6mFRcUhe9Uv5maOrFaqr3D5QQ5Dj5mKtUFHsK9Bv+l7KxXuPx4v3t5Sg/BS4ufgWXHsfXavu9Nr3sXrayHRS2X0rrCrUEu0+YuCB878t37SPZ6eE/udzzu6jJ6Z+BmMJzoyTKUb0rFvG0dvConApOhNR9q6Bv8oPSjXpIitbAo+OClPR1Iqdj0umb1AoldkOf6i+Q3l/TAiTPC3L3BXXSN6IurqyEZKDk6pmFtz10svA6K0Azz9b3T1l+JB1Ews0/DnFBs23XO4G0tw+DbdAE/4xqORbqlfRaTKm2fjYfTvm/LnAJCNlT/UB0p5WlrQn5TCztHS6/iVtsXW2xMDwSyMD3YpxpZdseFemqSeYqqiRbKISaZhp/EJxJ/0/DZT9yh17RSXUnq3p0dhxvG/ppXBVxSyqmDlsRv2CYaMEc2Z1hFonAfvaI3AJLYp6RyfVESbz202PB2pdb1169miP+BYFMADnVemqPZxRQhWMpBItsAzMLtLTlrnmw4AD4h7R19r57vVRYaKXnqLeEwKV0vnRTYPwh7f2VuYO8j+Zr2xqHMdCVx9ez3Qk6YScWpKF5U+zF9K1uRoZUfVM9YSPH8YIgF5h8H6yig3jKTDcmNRfUHuID6qg96J2y8YKuU7zOjIRgZWh2gdTqRdvmqRttFitXtHx0PyQwfKbvwiqELIM1a6wAVX1ralu4dcsZR4kWMKYOLDTw4bEgVHVkCch08Cvc6eQXdvMAOm1YS9NOBOKuUQlTFi+7QI9WEKatncf2cU3RZKM4SJwUzZ2+XxDuUAV/eA9ePSzRoS0ObxqsKqGJbUMGYOwB4sdz9nVMCt2tBXCDFXe2/YXptbCbhgYCsQ7byx2GRC0VHlNFxR+e2g23b5XPewBl9hRlz8DTEghm+mQEzgjR3BW6wCdFYkUlvavgW2s1v0wscrE2HZQrKNH5CF2ZFMROwUaBlVGQ06lprmqLztWOqf++UJwu1q80hEHPlt0E/Ff4ovlFmtgTQ1SqGrFcpA2ciowBLsZPdmJTtrIAfi51ry/8pl7jmFMdckxIN5EEYlZYB9VOssVEx+A5OGZoj/BHKStAbTNpSKdBq6sMD/bdS+cb1JuwkxI/NYI0gHrNFegNLiusspu0R2cXs0L3nSuplneiJD/7IbHcPPClFltdzCfyYHSs34X6b8/MqYTlq/yyOm3DFNwqiwI1ujHVscSRQo52mgIsZZmMYz3oB+6d7xyJl3RXHiyBlCSAAAbtX15QyxXjAgPaqMfB+qN6tGksmzv+4zErpMAm+lWvB/JU4jtaiAXntxi/WkuJGyHN43F2HPjsE1qWExU4m/M9kycpLiT4OJApbcEdJZbL7/zW81aU2cxXYX6JpA7a+swymYeq6CQMixt+Lv0o1fRP1pu0/P8/hijtgz7qdd5w1DZ9v3opzm4QV7BOR5UysUDJL8Wop0WeyrKIfCHX9Mb1iHu2KddxwERhEZEHr3U6Hh2lSD/+NaJxuUdzCsqMSIgHC7MMIvtuirhdBZu1knScZleHfjS6uZpUEQqPSAaZGf71+CqGpgUwLIB9AffVnHN1H98g9ZDC0hrgPUkfHx6cPOQYz2PFGs76+eeY1mZobFXJiS9HNaK5G3H1b4EqI1brxidfvZPRM06RoZXsTN/+EX6BB6ct+F32raUQmyGt/EBPF3dCaO1L6+Y5Uu+4QijoULbnjP6NBgzi964f4h0uf5MwGQXixLdrRpuBshXdXe7LQs7xDAFOu4XzmgpnjaBLNx54XySf4tGUzraM7h+U3wP16WibVZ7GFflmR3SwmkOVialfJpFdDLuLds3GOCfkD42+6I7DLpRIYaydfRLOQhDEx9Qdl6x4X41+ML8Iriz2j2jzdnJyeHQDVEH5b6Mfqu/5ydebHviswtMA3WTwpDz5Bw5ADF499emNCPkQ2tDRUH/UIdM0aZy7sOqh83xst9ddd0YWm5bIE66lKk3mYMymSnbe2JFc7132L5UZsq4tZqrnfv1ogVgstZJZRJ0b+3xeOdE+YKsb0oI8GvKRGEsnL6wNt7Tdo9YY/bCvz+BMjn+voML4AjGaA68SdWZkuF9yclribCHFdRTykpV+g8s/1OQ6AW2OUdA5hQgThNYNd7cwxleKcQJsuhb2bSlg3gX4yES13ZdL2rCiyAqrV4TCaH5jSrgnQZXhB5nukA/rg1hcmLZAWGc/MlvrPbWNZsDKGrRZiK3s3s7XJj40P+tUqzJobWRpzBWcMDuhc2mhEfMa4T2f9cINUPkhabEdaNRxuimIhXvFnX12T2k8DqE71IO769v3JGzy3DFpVxiI9JelyVNVSoEvpyHWXcUvK04CkuFgrnxaeDMzA2JUSg4Ku9mHYmFepfciFpyyubOGN4SiYuHc7oYX2izkZ077nct8iFj+O7vra9GO9RBR/e3ofAHyBOIhJ6hNVTkccyIU8vAEozWzym/qRMxLwElP25dcc09IDlygl3txsncJsqAyyYJkmO5vVii+aNiseG4GaR7DCYkR970guboG4CwSGufKA90jPAqHBs7I7KpDdrGi0Un4stPrlBZUNmxiVPs2vzjavQtkClpUpmi3NWpYWUl4QaVGagYCnHmwFfiq/pntD4mBxmFZCsH0RCZYxVadQdbS4zNU9pxMfYh5fZJ+ASNyGrb1lbydBhJXkEViXAKbXq9OpoCfyKjApPTWEi44UK6IRCauItdwQFCEBWIGirYx5yM+PfmPQiF9Bnss5EaAgNS/13lJ8sO44hmbZiOo7URldmFhJUJu/06RDwH6K5zzJoZbsbjjonfdM8QQbjaxs2Aofnppx7hk00p2QWq0HOwT1H6ibX2qWWErjbMkxF+2CWwl5HVj2Jm1B/+DZ5NDTlchGPQ0sANIMXdcahweFYvNdVNdFd+jEy9uUrVYA8kx+S04oXN+t5cjvLRy40hISRdgGZ7oXrrq1+7DZS2aazAq3eArWaB10lJFzdx8YLtig2hqFosqn9x7o/2weeLYaCm6bOdXVbB5vFUudiv1ozVatIVKtZ3WO0hOumOzHh65xgg/3jFy9ZSd5vQIlz2iRj+CkX1bTfMnLNBZQFHNBqEM/68d7rqlehFwy1K3hS4fT+uj4kCIsfdAsu6+0M69vwe8GKFfra/lgHxYNV+KJy464GfXrG73a+CqbUL4tETgm5MUm9cWZC87xUTkqhB9mHeLvpcF6TDXRr10wXkL3lQgzraYwzOhO973Q0M9VG5eAdKAGEqoXKSPr62rauKOFpyKZh0W9rLtDu0eF/wrrQ3h6c6tWvozbNYMfZg4KKenCZrGGH/BYeQ2fZ1ba/Iezm4XyTXuP5hpBGZQeJGkKFX6xMRHORARb5T2GBI8TFpriFwf+QRYyRR83Lv9aBR8+XxQsIp59GhCio5INFGagkxL78F4HG5Ba0755TDKCx5Yl7Xm3U53HXFk8Ep/WqoETsl8hWNhcEuEc3T7WMNpPVxMUdSCMux3zULXzXGRzd0Wk+YDUzpNAS0X2ILqdokIKdZxqtpWKHYAh5JRlX6VHnhYtrr6khLiG9njfIfruk/PcpOZihk3UyyViY/puxAxtz9yBgw3RP5qlVi2shq9NWBKFH7hO7VHQeKN7ZFgI29zZKKhsaow3FZ2W3Gb+9GPJTk99fRkcCDgsMTBFXbVaQfMrOWaVY8rO6QmYRafeY1P5F8R6sNzBOgyoOW3+JMl5BY8qtRIzLLixeQKDA44uX+5vIJcX3fGLOPI9S/281pRhvSXFQB30qjpiEPS0xWIE+ny+e1Vk+Iv5lgJaUO4B3oxKuKqFxyywBH2AcrsJVgdKg1SEfwbwV3chTaK4dfEwsQ1JcgpHyqVuwTWbonbZQKmvsv+gRoKFD9sM5rmTzuugaGrk/IVMpvx7h+xYZCc0QArybVOASG5aqLVgN5NrmThJeizSHhgU7H2Nf8AJCDH8MBdk1bP1spIGvE4eJSbNjBa8nYbkNhwvB7II3RQ1R5SrTTmVxliVHK7IqmR3m0VdelMorMfCtH/T4k9A/7WL4PRVEj5awECMcDG/XecCUFKFX0RkkRgjFbiKWXUwMc6MOqgA0quY4jvHCnutS7QYD/Ce2mCOlruQ5k/CTcdFV7gIdPVmE95hEyslNHRVARO+gPrCWB3Cv0lMPXtBMqiW0vgtgwiyg0KneFGK2DwpckmMAuBpfJmlTjhWkNmbk1YsWqvnVeG4r+fVcIRe4JbeuSoYvs85+KR9RDbzEFw+dZ4c0WoyIa40PmM9vsUtYXxEg62XLCIcp+0ZMjuY6eWj9uzqoFLz8tg29mgktEO1QnJs0SWw869pnSGTxTCiMtNn44kSNLxFj78I+Wv2g9YoPRhjdcI8iN5ysYr6QG2y2tn1LJI2ci5mNJcD7fnNlusaoqBtLKlv9jfhU+w6x4mLos2aLvI6N+y+X7eBFbSox85e2wR9+CMU+NDeShafKk36NohW/zBIwwa9Z+jqkLynKUQVwzr+SksE5LjJkWFrlKGMp7YmUjK0VtgtLNF9EBpHygcrXN+BE38dy8bpxvkiV0Uz3bh8WxiVa8a9qmULoolmcnzlrbkAcOjkEjB2GRXf3/4yO0E00lXvcbrWOF4BCr0l7QA7PByaqyZYEDBVm/8ot3/GefpnU9kCy6eghqFFwrJ4EqvHfK6qm09zc840d7c5UusGQFHt4R3n3wG1gCEwppI/Jb48rl+gy7Jdm3w0U9w+iZ5P/I4zrc+AS5Vkn2H4Qodf1z/aFr65129zO02uX2s74USIjnQVh8eUmJ12KoUrpuZXF7nLvO48RfKfxJikBH36gedJ7MBU3ShEk0phd2l6OKbqRPlNAHje9q3xJgWolGGPlmrLsV1F4TRXNKRYXGH3D1lnEbpAGbWDZwmExutztFlVvv/22z0vj0QjVWg+rWHdIh4ViE234AXZcN2CU7hx4AGP/9xcgj6h/dhB+3+AQj7HSCCaUVLY7V/tXZU9jdP51EpAilKHVDTBA1lmEgdo+DadQZPoDQ/YJcFLZxDb+G15tyTtNmTkqIJjmzwZ5UYiQKV1XDX9ec38GQDlS1PXDOhoUXjzxqOVi5C3bS5r/yVDT70lUw/uua5r9UBMHdS+JoGYsKJQ//iDsIG5csL4sx3QZneZrTQVquOlbU3GLzzvH8FY/tMY9Ly/i4fhNt7wY4bi4rVcfc8kZc/2jL+FMN3FGhtFrwkJREf2uzghWtSLzroREdSKNf9Rq6mZ8xGAWzEatpzNdF79Cs6AABVLTMV7BldfSLGZWP4mROwN6w5vkmKZgjqug9hQ1lxMlJt/E84G47Beyj7aqWD4lpIKIB5wstjEU3ZfEPis5eyBE0qSvXTprTPbKsIDI9N44tv5vc7OcmlnLOdAxSA2uVaqj9Fq98EdzAMQcm1v06/No/VsjABz79hvn4ywlZbHVk1csbdBELQZP+UZiumlrUhqh6yJ8Qc8Y2q4LtVGr+UeABUXglqv5+aYiesjMayUM9fcwjFU/AwTfcex0cHcHql2+YXfE85pJjNxmWYOJATeGVU4Ge1OGs41QXL8bdTbXf3ymRj/pOnK/vnuX6WJo8EpYK88RSdqpVr9nIjQ1iYHNULfpH2UmVTJOUKf531h9v926C3w95faLAgE+lfJPG1OmyCaCmfdJzDX7zAyI/om1onHizvsP4EaPExHrR4JmYhik3g6/9a1Rddae201JKHAJvBngxxaorx4ZXNKq0OlD9KyORC/aE/8x+AnNPvDPtUKp1Vygk8E9WybzSDg9tw1gKkcpxzJRe0YYFUg94h+8Z7G0wi/GEFQoEeJ+X3edfmXAw3CSh/WyiCEkeZ3x+Y9cLucVwuNDkK8qLaIdbbMDlW6F7q3dtHJQV4a5MJzzpkrdMTONBUcP9lgdSp0qR+QJPeTIdWufLtj4QvCOQfpZV3iCCL0BiwParLpAqMEeiIINzS+zCvL2sl/25MbXfObXsIRCCusAGbCSk9QbWIUg2TareeqmRc1RaDMretY5c2wK3QEow7WuMhBpXQjyi+PjulifJbs3BEqTk+5yI1UW6ZrAmiO2n2vcUOqpVNSfwWFe9T48hYqLGwKdSC3PMkXseVe8MBqoKI2Vj3AEIFsn+NNA3Fsa8GqLjGDLFzTdlf/3G8qduABERZCOLix4eB3DwPeHDx+I6kdrSaXfq7vPr/oOD4IcAbAFCtCOXBwda5YZLh/S8dO/8zcCZxqIpZ+O4/e2BI/kt5Cn59/h9IZg+hb8dKtFMXTmdMeJiHb3ylm1LgxSTFBMV7MHJEiNBTuX4KD07x57Jgj9T8QwVZ329T6Pu/CJehL59nuoSER1qn3WyKjWS3lPuEr6X9REMiF9gpHJzRmz+/2p0iIZcSkEtdONSjowY0rkSxlJJnMe6Gbh6uXTovWKI76tv12+28FmoqH4GgY0Qa40L+eAlPB0mq0hOCruGGtgday3H388BkaHNucVASx22CphVSnqtol+Zob+80I7NJQqRO9NscSeuoYjpmnhVP3HncLSMDSTxQL7qkkrC45sxR7EYv72fQdBnlHkKxUEuYd8iNvbgOTe4M/qaF2IG1yfXcPiZkvEPpqHv/zbGIno7o8FC3V6LlViVgvs1D4vmwe0lAtuFl/rJ2XvDRl76w37CauK3mzY6/vbsWYDylxmvDmPZyPSICJy1fmH+jm0Yy5yt+2hqy7aa7wx4zGlc/2x1mbniGxLKLltzu39VG76Sr9nt30m4ur9pR49t/btQ5MzbsyEnq64zXjZKSPQBWBh9VEz+yWpDZYkjLYEI00eu6V4ezU0B1tQnDcNnXvKoIFmcPWytxroG3/qAeuq6OBtJGn1Ks9gCq86R7U8fF2f8uSUBo5edfhJpC038JhS1uBjFta+KPJCVqmZzMECER4L4BITQnfZ5Ydhdc0HxYBLjnUZHnSWmjR/KfHGVCK0eQODoZLNSFgaEGDZzFjEt+XHPDSdAh4458QyFirXiAZL23wAkucQwoUKYP2oTr3JeZ1GeYIDumTtCeDL6s2fLcDfRFEx4ONn2Lu14XyZc3VCzfJ+qx0lBLp8z+WZVfaLeb7j7SbWZPILUvCqNX+eAYH27lUX3p+t5b6ZXkyJC5Ey2tRKFUcNIZTNTFcDp/c8pRUt/8yRaBvKm5rJNZnFa6wbk/XDQ9txzTEqETmiC3iaiYwXIF6s3NTQmO4pITSb1f1c75dFK71uSAA5qWglt7g3QDELSR8KLhKA0XIBN0QfyxbGlRTswuPwuiZy1oMWLI6WcTQGsmj6QABFJI3+3Sx/CCzvcBbkqShqrtjvNR5t16t7QTicbGIo3wnu3plG2MCsc0q2kSpwcYHvuaQevGQTmw/pmyGJKUJoVlGk4ZTqmQG8s1HMqmhja3+wv3juGMKU/RyTTduy1o/fGPO4oD6p1JnlswBpEdOSO/bLPfn+ROSoUU69GEHs1QsdgAwPSUwBS2saLDFhpi/5CzSm8PQ5cL8L9HVm/H299Nk/BzMnMgrK6CVatlnhNcY9wQrKSwKZlTYXIhePlwfeeFvPSH9lL6R5qLUmbXn7V2maAUBT4fza2ErJqYBYM37qxiEI51Wz92FW1EPBJTriE48lvW2o+fv+78iwM7+6Hfty4GVHq/sY9VCSLoF3EZq2GHAe0aq+hvmAEhwSkFnXR1wxdl5M/mOYynnxGzw8AcAPM/v4mnu4PQvpSILYZkiwWLd7eMrUwAM1Aa78dQikiyTpB18TZYCwSXRWT7xyLvy/xxkvdPo3SDPAl5La3K0JXr5ZADN2UXEgHvh5IkdsQ8OABxzFwxR77prGhuPdSPdHrasqjCSFha0HLrU2qjFDdLeJKkW0RQgS7xIzMifRFFhJE6cKWX+ZwhSVkFBBmdgINCrYbDUmjRkGulw9VLx7ixxP0P9V6eV6PTgO895CWxlGU/IA8PYVuFYzZgm+giEnlIjhVoKz6it1QWbCU/W3q/MYMOPx8U4L92FCEQFbM547ZTVGEUA8p4ZKBTAbTpc0vda8YU9AsFAQZnXYwptpkPaFZEVtNjZ/Ym97qF57Ta31BCWBZ7e0MvaoYr5/zkkTnOXsBU+rvqmLSpgDiORIr0hVTaLxip526gWrG5zlcDTopK97RL/grg7NbyDUojbGzQHymqioZ2h9ZbR3cqvICcPc6AV5XxXhXerQdIL80SzfOr+QkAXmnSN+rUNzyiM+EFaJLsJnJJlOaQF4gb8gijf7RXdJMwam4EWafKuP0vIl4N/GEo1Gep7S/A8n3jUDk55SOT4R/K+T/o5TILXq/IFK4POHkftl4nyDOKLwGcLRk+7xLIAlTwrA7pNbHnt71+IjR4rvWtSqnFJe0a35Qf/EKn9LChw/81MtqZcs+h8VLItDuHIFXLcdKQ+SDi3RmeUNjsmIkzWl/ulwCRVQy1UP9XptOX6cBmF68tIiPje4vyxZLok11zeDoUH4B5WLLnZsOBeEIRH9ah7Cqxh04koXmoBIuEKss9FLVGs1pk9p+2aN3YiZCARtMptyzhEEqbxP+U5Z49LTGXi9nop2CBiPDpKIhogYGlm8GVFBMsvc8UAmwwSRQSdaDn7BDhoXEVKzry8qUDAyh5PYKaSogMkNjAGBpTSKoxIFO93cYb5mcm7URB1oRuNNr8PRZ7MNpmNzUlyRySETi7wrLwzOg9AAN+WVdFFlneNEsZLxB3deO+/97ArFvLp3KiFfHO207K85O6xyB7QOS61aO4pq20Jra5Vkr6sodqsycO7Hz9ZZ/rE1LYzBaIp84xZ8IinK8y6ijpGMQ9y0zwn9O1xRGIePn++Pjntimzen62za9w2QADYjKu+TMAmGYSTrTUYxTbEGZpSGiXOikKyYtWyi+9TRVoHCH46AVnynkDLgmLMt7Jt7lIe7rCut5Ml0qdd2klPisabGi/Cfb90B3SGajFdAcNjl2joAI5b3Tf7OLk9RAVvglx+EWoduuzoWmMwmRqXJknhqZypJX+ztQ7OVnM/4PTADxVcAckdFTMMZGN+rRwDsdj1L6fLOTcOaVTY7R5ygdgXTpVxO2cGmm0YpBRWTBPo6qVbGhYpOaLcjAi7dlNnP9++N12eoTka6CUWxpxU9SApSga898/CGGMNTTYz/9POINfXWui8qDzcONGnCuL6ymKgDk3jEPIVa/YN2qmDMO3PFwN1cE7FTiybqQKlq3aj4x24cWiBZwMbBB9JNH265plkOp8Yzg/p4V5rrgTiYINMztLiQ/1HrZ9vKn43R6+NPJPab076ZCNonC7WY7p849N2nA/yxLwzAgoYk5kQUEifIfWXoj2PEq7hBTBp5X9JILAAaxdE0jUEoRHDnigEyhlKk3LC7PsvSae+O+4r/+isYiP21Np3QE9HUhq4u4ziCH3uBHuc//9sdppJEo9tOvlKSrXO7SQk1cXf5jcbK0njOpp3jL5GQUJsoGSFr0x/GOG+CO5b8DMyQm3UHg8hyo71Gdtrz2svwYs6+YjL/fNzgrIIFJil6JL5m1GQ6NlZYB678ZXukRnLQbb1aphikxSDRhPfTvf0aZj76czQ7/g59MtkLyk8nKsHZHZmGrKYNkFIS87AN920XQ20OQ/Ogzg673bYOSP30ctlnt5l2/l+rD+K2zzQ4UklCkqHrsGgB5eLCQOE270dY3a/s+L8K9XDGABmaPtCQUNLZ2fo3nfm0dfozxQjRkjpCiKtFdhu4Z7oTLhz2iRX9sqknPk6TJBhZIVNho45t5D1eE42ecVTVrE6W+YM7+2ywsz/djzkQ0CnAHE4HVIbi4gopXyLqdJ2UsXtGb/f8qNgFJaYpd4Xbk2tvgjxSjd9zaCCp96ptQ1YPON6aHn62tTZJ6pWGCSIr9C9VxEy02ZdKovmWwnjRf5ThPEKn1hG3VCw67SwAW/ncELMaYuYAzdoKn35j5w02F3GC8K99cus2/NzQjUuzwGlYRE2m0SyM7Gj+wBaoFeIWf0c5WD8nbkzinceM+PsDilHVNtJmE2+Q+MNWhxw26QPRrXhb6v43JEkfdLc4qsuD/B3PHbtndBsIE7ZD7cD0kx4q4OfRNGgt4FmjKz30AASY/3ALLan8fJIVDdiII/Rfr0vqt8hwOZDPFNvOKYLkOYREQIja1BMbwZ2HLUJBs/WZhYqV6Tw8H8aioZnJolizrgm4/NJqnIvbMQN/YgjV1yYJDflo21/KR7Bg1e/Svl4BdD0Oo0T+vdtVHMtwjCXN3OMXlTkJvPj5ujXAa1KY2IcwT7p4hKjIkQ3iMSNHGqQC4kWj4CjsvPST7Ie94LMleQ/P8O5tQeiuf/3jvdEf/BBoKYipYDTTwi+M2WKn0QMt5UB2I/s6Swqab/ewGOmD8RzlHL0K4+hPi9hS0BTzl0En4Q5ptHcPPkNJxExaDcyu7WLK3FbO21Fl8w4y47bR+VnlzqBMNfEFr4XgNchDRrjaYHdxEqkaEssg0n8ynEhwaCXfW0OFSFdgo0Pq+bxKxp15YzBkHv6gXTmEnWv5ExQLjvE8O4UCAP7bEj6jkIm9MBnW6gMaFvF6TZfXQnJ733p0J/lE0lTVOZHhugvKRAUHhLYi8Wbj9yJ/DQGaz3sDW1+PVi6l3DQXWcetNwCNpPok83J55U51MdvE1BuiVFLKlF5YMxbj6GwrJbsx/2T845PI2lDLiubPyoI/vQEaCgKfwGpE+ihLtRUeqcnID0MK5Ye7V4TOt+nfLPCvhA1WAlb30E5DChp1NR/fwauyrWOrvTlpfl/0J1/xwa0trsyGERC5anVEYyShJwd3gajXjAcUZIzJyDWbfJB1Ggn94117ktq1b7nX4xomCTVu42PtXEk4WPuZiXRbDlCZHBv3BfoWGb34Z1wBAbk4tOVVz6GVfmi0Ax5yWL+HVgsyF80sKU1P9wm0p9YZz1X3ht0OLoIOguN6eksqMM93nDZzVZyzoR+C4+K2ZdSnVEWLpEt6xdPFipOgxmJrQifapQQmY7cN5v8C0ztTJOZUIVtaynWuM9UlaThQc8dWEr2DT8jvwzvAhKvzcpdly+ChX7jHqlfCQtnTTKVYfhQoqvBQ1jXv+ftKre4bATE4fk14TX3Vpp2jnOz3m90bBAhKEzOSzUGZ+DwTuNzPhXaS7fMkY2AOsCCCMDblPtMRwG4l7emNz6e+0kZjHjlCqu1aruZNfeiIPIk+ftY9nHrZ/4hvS3N1hEjOK2gYyrk2kr/Il0K5dOXUJBgdpAhlQzCsyCXSz7sXa7T708hr3t0VA8Z8ZBgt2zt5ULwkYAubqdTJi+NKW4aOCtP5Ss2zbVb9JxgM0URlkLiVJZzc3ELjkLG0XxeEOmVHVk/S+goaC4Vcj3a26yFIMN+NHwupXUmDzCUYmK+aLz3cJtoNCoPNCMs1iohfVTfgG55MqIO2uRY+h56wa44/r3ThhefhgDOF3k78/C4ACWodE3jzCDrTtveLI/lIoEGaWgj1bq6f1MA8Bw6zDKb4aMz9J9Ek199pImk9S/mJs/ouvxG0ecEoEGrKN20VFmXQNo72LlqNoM4rPyfFsus/7FxzqGh3QPAST9hoiMMgd0LGqWu77bDp8ye4wmjUDbYWPtuc9GtqSausG7z/GuhmWHRNgKFbbMIaFr9NqrfRSVHZlaJFwXcZ12vuGmptV6bVus4Gdb+BYNDv23M7axEyL4YH+dcSemaHfEijX6l5UkeSmKKssDzBlfgwxzwZjUfMSWDvU8M8XmH1+24dvJx034XqQimgS/pKGPc4+SPjso5VIKDW1FT1dgn0PPLDzOI3XZ6L5erkj+nZwVS/K+F5/B3BajBSAaIWFY8hzAMqV5KHq++PJjpVTYAiK4tVKr7Gp2ShFCkfNxEq3Y7unTNi4YMvOusPzDKUhjJA0adelpPxnij9u/GYSNtV/CWVi+pcGidm356gkzWU/4Ry7TeiZbOQgbczz4syKC+XYRwSzh1o0GTuPLbl2ROBUcmQt+2SKxg65Qgn7e0WjpOYWXpHHj3Kb8gtkMb9BwEWIb1cm34TJ/PcLFEfmUGGy9bL2HL1tYUTVJhXM7Hlyd5eWcVlgCyxgvx44KQ5wTWaEaWx15/ZL282BOGOBHKpYtyjB7e+gazTgwlSkYTZ5Zs+u8cwNKg0qEXV9GiXpbs8xby0SLVk9KOEhYspInHYZdtF9cbthI91JaPk6yC9ZP8xR2bMhFZORttsKpeE/NUkDeeN3yfLT2FB7Jre5QGfw4Unp0ZHuX/wLfCgo2DEU7zZPJGIp3hSLAQZNjPZVfTzW9B6PzNzX+S8hxzPR+BUssxqm5Ict7H2PnsjWCGgXOh7rxVq+Nng0lgeHo7UrzMTVMZbmS36ZE9tY0rVu5CW5u54ZpohwKQS+DGjd7amJ9r66IESJAAnh0Umub0zUO88/uwBzIOjbXXSbL4nyPB7Ej5NA5S4ksDGEtKQ23/vt3Vh4OzKdVVQ6P1Ad9Cmz475E1PQKgSsSKgCDXwJ1pmTEwx9nbtDACMWd3H/xmhY+oygiPxpvGxXkGtAb9ddUVtGcMrM3hPfyDGO+XG68jE1pbRpwqdOFRaE49QEpAdOOHBGtr9h53bvTHBzWVo6VlYIB0BoezRGTt7vGOjUMIw7c2mprufz4C9yelCADBQm42lfl5mkibQCO/TRHcIKUZ4/4G/T+Mivda0cEahGnD9fw5Ul1T+G7N5PPJTzY/8xpCRo/eemoDV8ZOaZ5qbfwZ1R4y9AA0eFt3oI4fLQd2GHwKuAD+836KPIcXJNMqYXuF+LJiaSWUSp4AJosIZrqPkVp7JX8uBQpZMFEWp78cw6YteJoyRbZWO9eWcd2UJGGXLK+HECeSaHvFAiWhc5P7P2YKvRpx4Dy8bf4JcBVfHoftxb4LaCIhD/BRcz7b61o4HEUFx2oHZH0qzOw9CMXF+oatizxjhor5N1zEXt98TD+JkgCnm4h2v+se9z/tJSk48VSoyHQn7DYWqkNA1ercYBh6RrfHJv0/82qijqFzi/e9Xfkclwp+3/F1vSpud0fN1JJsNAAbk+/3YTB6eb1G7aGOKraTVIKo0fX1rBhDq3tSCsDuN8bhlAqlNPQrBaAd671gtax1q6RBuoJYbqQFr7XOZFO+zXA6iQzOv54R6JQN9xEhAKFQAAAAA=";
 document.querySelectorAll("img[data-logo]").forEach(i=>i.src=LOGO);
 const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- install as app ---------- */
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(()=>{});
@@ -130,135 +132,220 @@ $('installBtn').onclick = async () => {
   if (isIOS) alert('בספארי: כפתור השיתוף ואז "הוספה למסך הבית"');
 };
 
-/* ---------- martial arts database: Hebrew name | Google search term | aliases | origin ---------- */
-const ROWS = ["קראטה|karate dojo|karate,karateka,קרטה,קארטה|jp", "קראטה שוטוקאן|shotokan karate|shotokan,שוטוקן,jka|jp", "קראטה קיוקושין|kyokushin karate|kyokushin,kyokushinkai,קיוקושינקאי,מאס אויאמה|jp", "קראטה גוג׳ו ריו|goju ryu karate|goju,gojuryu,גוג'ו,גוג׳ו|ok", "קראטה וואדו ריו|wado ryu karate|wado,wadoryu,ואדו|jp", "קראטה שיטו ריו|shito ryu karate|shito,shitoryu|jp", "קראטה אואצ׳י ריו|uechi ryu karate|uechi,אואצ'י|ok", "קראטה שורין ריו|shorin ryu karate|shorin,shorinryu,matsubayashi|ok", "קראטה איששין ריו|isshin ryu karate|isshin,isshinryu|ok", "קראטה אשיהרה|ashihara karate|ashihara|jp", "קראטה אנשין|enshin karate|enshin|jp", "קראטה סיידו|seido karate|seido|jp", "קראטה שידוקאן|shidokan karate|shidokan|jp", "קראטה שוקוקאי|shukokai karate|shukokai|jp", "קראטה צ׳יטו ריו|chito ryu karate|chito,chitoryu|jp", "קראטה גנסיי ריו|genseiryu karate|gensei,genseiryu|jp", "קראטה ריואיי ריו|ryuei ryu karate|ryuei|ok", "קראטה שינקיוקושין|shinkyokushin karate|shinkyokushin,שין קיוקושין|jp", "קראטה קונטקט מלא|full contact karate|full contact,knockdown karate,פול קונטקט|jp", "קראטה ספורטיבי|sport karate wkf|wkf,kumite,point karate|intl", "קודו|kudo daido juku|kudo,daido juku,daidojuku|jp", "קובודו אוקינאווה|okinawan kobudo|kobudo,קובודו,weapons okinawa,nunchaku,tonfa,sai|ok", "ג׳ודו|judo club|judo,ג'ודו,גודו,kodokan|jp", "ג׳ודו קוסן|kosen judo|kosen|jp", "ג׳יו ג׳יטסו יפני|japanese jujutsu|jujutsu,jujitsu,ju jitsu,ג'וג'יטסו,ג׳וג׳יטסו,ג'יו ג'יטסו יפני|jp", "ג׳יו ג׳יטסו ברזילאי|brazilian jiu jitsu|bjj,jiu jitsu,ג'יו ג'יטסו,גרייסי,gracie,ביג'יג'י|br", "ג׳יו ג׳יטסו ללא גי|no gi jiu jitsu|nogi,no-gi,grappling,נו גי|intl", "גרייסי ג׳יו ג׳יטסו|gracie jiu jitsu|gracie,גרייסי|br", "דנזן ריו ג׳וג׳יטסו|danzan ryu jujitsu|danzan|us", "סמול סירקל ג׳וג׳יטסו|small circle jujitsu|small circle|us", "האקו ריו|hakko ryu jujutsu|hakko|jp", "אייקידו|aikido dojo|aikido,איקידו,aikikai|jp", "אייקידו יושינקאן|yoshinkan aikido|yoshinkan|jp", "אייקידו טומיקי|tomiki aikido shodokan|tomiki,shodokan|jp", "קי אייקידו|ki aikido shinshin toitsu|ki aikido,shinshin toitsu|jp", "אייקידו איוומה|iwama aikido|iwama|jp", "דאיטו ריו אייקי ג׳וג׳וטסו|daito ryu aikijujutsu|daito ryu,aikijujutsu,אייקיג'וג'וטסו|jp", "קנדו|kendo|kendo,kendo dojo,סייף יפני|jp", "איאידו|iaido|iaido,iaijutsu,שליפת חרב|jp", "קנג׳וטסו|kenjutsu|kenjutsu,סייף יפני מסורתי|jp", "באטודו|battodo|battodo,tameshigiri,חיתוך בחרב|jp", "קיודו|kyudo|kyudo,קשתות יפנית,japanese archery|jp", "נגינאטה|naginata|naginata,naginatajutsu|jp", "ג׳ו־דו (מקל קצר)|jodo jojutsu|jodo,jojutsu,jo,ג'ו|jp", "בוג׳וטסו|bojutsu|bojutsu,bo staff,מקל ארוך|jp", "ג׳וקנדו|jukendo|jukendo,bayonet|jp", "נינג׳וטסו|ninjutsu|ninjutsu,ninja,נינג'ה,נינג'וטסו|jp", "בוג׳ינקאן|bujinkan budo taijutsu|bujinkan,בוג'ינקאן,hatsumi|jp", "גנבוקאן|genbukan ninpo|genbukan|jp", "ג׳יננקאן|jinenkan|jinenkan|jp", "שורינג׳י קמפו|shorinji kempo|shorinji,שורינג'י|jp", "ניפון קמפו|nippon kempo|nippon kempo|jp", "סומו|sumo|sumo,sumo wrestling|jp", "שוטו|shooto|shooto|jp", "פנקרייס|pancrase mma|pancrase|jp", "שוטבוקסינג|shootboxing|shootboxing|jp", "טאידו|taido|taido|jp", "יוסיקאן בודו|yoseikan budo|yoseikan|jp", "קיק בוקסינג יפני|japanese kickboxing|k-1,k1,japanese kickboxing|jp", "טאקוונדו|taekwondo|taekwondo,tkd,טקוונדו,טאקואנדו|kr", "טאקוונדו WT אולימפי|olympic taekwondo world taekwondo|wt,wtf,olympic taekwondo|kr", "טאקוונדו ITF|itf taekwon-do|itf,taekwon-do,choi hong hi|kr", "הפקידו|hapkido|hapkido,הפקידו|kr", "קומבט הפקידו|combat hapkido|combat hapkido|us", "טאנג סו דו|tang soo do|tang soo do,טנג סו דו|kr", "סו באק דו|soo bahk do|soo bahk do|kr", "קוק סול וון|kuk sool won|kuk sool,kuk sool won|kr", "הווה ראנג דו|hwa rang do|hwarang,hwa rang do|kr", "טאקיון|taekkyon|taekkyon,taekkyeon|kr", "סירום|ssireum|ssireum,היאבקות קוריאנית|kr", "קומדו|kumdo|kumdo,סייף קוריאני|kr", "היידונג גומדו|haidong gumdo|haidong gumdo,gumdo|kr", "הנקומדו|hankumdo|hankumdo|kr", "יונגמודו|yongmudo|yongmudo|kr", "טוקגונג מוסול|teukgong moosul|teukgong moosul|kr", "קונג פו|kung fu|kung fu,kungfu,גונג פו,קונגפו|cn", "וושו|wushu|wushu,ווּשו|cn", "סנדה סאנשו|sanda sanshou|sanda,sanshou,סנשו,קיקבוקס סיני|cn", "שאולין קונג פו|shaolin kung fu|shaolin,שאולין|cn", "וינג צ׳ון|wing chun|wing chun,ving tsun,wing tsun,וינג צ'ון,וינגצון,ip man,איפ מן|hk", "וינג טסון|wing tsun leung ting|wing tsun,leung ting,ewto|hk", "טאי צ׳י|tai chi|tai chi,taiji,טאי צ'י,טאיצ'י|cn", "טאי צ׳י צ׳ן|chen style tai chi|chen tai chi,chen taiji|cn", "טאי צ׳י יאנג|yang style tai chi|yang tai chi|cn", "באגואה ג׳אנג|baguazhang|bagua,pakua,באגואה|cn", "שינג יי צ׳ואן|xingyiquan|xingyi,hsing i,hsingyi,שינגיי|cn", "באג׳י צ׳ואן|bajiquan|baji,bajiquan|cn", "טונגביי|tongbeiquan|tongbei|cn", "פיגואה ג׳אנג|piguazhang|pigua|cn", "ליו הה בה פה|liuhebafa|liuhebafa,liu he ba fa|cn", "יי צ׳ואן|yiquan|yiquan,dachengquan|cn", "הונג גר|hung gar kung fu|hung gar,hung kuen|hk", "צ׳וי לי פוט|choy li fut|choy li fut,choy lay fut|cn", "גמל שלמה|praying mantis kung fu|mantis,tanglang,mantis kung fu|cn", "טופר הנשר|eagle claw kung fu|eagle claw,ying jow pai|cn", "קונג פו קוף|monkey kung fu|monkey,hou quan|cn", "אגרוף השיכור|drunken fist kung fu|drunken,zui quan|cn", "שאולין צפוני|northern shaolin|northern shaolin,bei shaolin|cn", "צ׳אנג צ׳ואן|changquan long fist|long fist,changquan|cn", "נאן צ׳ואן|nanquan southern fist|nanquan,southern fist|cn", "באק מיי|bak mei|bak mei,white eyebrow|cn", "דרקון דרומי|southern dragon kung fu|dragon kung fu,lung ying|cn", "עגור לבן|white crane kung fu|white crane,fujian crane|cn", "חמש החיות|five animals kung fu|five animals,wu xing|cn", "לאו גר|lau gar kung fu|lau gar|hk", "מוק גר|mok gar kung fu|mok gar|cn", "באק פו פאי|bak fu pai white tiger|bak fu pai,white tiger|cn", "צ׳וי גר|choy gar kung fu|choy gar|cn", "האקה קונג פו|hakka kung fu|hakka|cn", "וודאנג|wudang kung fu|wudang|cn", "אמיי קונג פו|emei kung fu|emei|cn", "צ׳ין נה|chin na|chin na,qin na,נעילות סיניות|cn", "שואיי ג׳יאו|shuai jiao|shuai jiao,היאבקות סינית|cn", "ג׳יט קון דו|jeet kune do|jkd,jeet kune do,ג'יט קון דו,ברוס לי,bruce lee|us", "מואי תאי|muay thai|muay thai,thai boxing,מואי טאי,אגרוף תאילנדי,תאי בוקס|th", "מואי בוראן|muay boran|muay boran|th", "מואי צ׳איה|muay chaiya|muay chaiya|th", "קראבי קראבונג|krabi krabong|krabi krabong|th", "לטווי|lethwei|lethwei,burmese boxing|mm", "באנדו|bando|bando,banshay|mm", "קון קמר|kun khmer pradal serey|kun khmer,pradal serey|kh", "בוקאטור|bokator|bokator,lbokator|kh", "מואי לאו|muay lao|muay lao|la", "ווֹבינאם|vovinam viet vo dao|vovinam,viet vo dao|vn", "וו קו טרויין|vo co truyen|vo co truyen,vietnamese martial arts|vn", "סילאט|pencak silat|silat,pencak silat,סילט|id", "סילאט מלאי|silat melayu|silat melayu,seni silat|my", "סילאט סראק|silat serak|serak|id", "קונטאו|kuntao|kuntao|id", "טומוי|tomoi|tomoi,muay malay|my", "קאלי|kali|kali,filipino martial arts,fma|ph", "אסקרימה|eskrima|eskrima,escrima|ph", "ארניס|arnis|arnis,arnis de mano|ph", "דוצ׳ה פארס|doce pares eskrima|doce pares|ph", "באלינטוואק|balintawak eskrima|balintawak|ph", "פקיטי טירסיה קאלי|pekiti tirsia kali|pekiti tirsia,pekiti|ph", "קאלי אינוסנטו|inosanto kali|inosanto,inosanto kali|us", "סיקרן|sikaran|sikaran|ph", "קלאריפאיאטו|kalaripayattu|kalari,kalaripayattu|in", "גאטקה|gatka|gatka|in", "סילמבם|silambam|silambam|in", "קושטי|kushti pehlwani|kushti,pehlwani,היאבקות הודית|in", "טאנג טה|thang ta|thang ta,huyen langlon|in", "מוסטי יודהה|musti yuddha|musti yuddha|in", "ורמה קלאי|varma kalai|varma kalai|in", "קוטו ורישאי|kuttu varisai|kuttu varisai|in", "לאתי קלה|lathi khela|lathi,lathi khela|in", "אנגמפורה|angampora|angampora|lk", "קרב מגע|krav maga|krav maga,קרבמגע,ikmf,kmg|il", "כפ״פ|kapap|kapap,קפ\"פ,face to face combat|il", "היסרדות|hisardut|hisardut|il", "הגנה עצמית|self defense class|self defense,הגנה עצמית,self-defense|intl", "הגנה עצמית לנשים|women self defense|women self defense,הגנה עצמית לנשים|intl", "לחימה צבאית|military combatives|combatives,military combat,mcmap|intl", "סמבו|sambo|sambo,סאמבו|ru", "קומבט סמבו|combat sambo|combat sambo|ru", "סיסטמה|systema|systema,russian martial art,סיסטמה רוסית|ru", "שיטת קדוצ׳ניקוב|kadochnikov system|kadochnikov|ru", "בוזה|buza|buza|ru", "אגרוף רוסי|russian fist fighting|kulachny boy|ru", "קורש|kurash|kurash|uz", "קורש קזחי|kazakh kures|kures|kz", "בוך|mongolian wrestling bokh|bokh,mongolian wrestling|mn", "צ׳ידאובה|chidaoba|chidaoba,georgian wrestling|ge", "חרידולי|khridoli|khridoli|ge", "קוך|kokh armenian wrestling|kokh|am", "וארזש פהלוואני|zurkhaneh pahlevani|zurkhaneh,pahlevani,koshti|ir", "היאבקות בשמן|yagli gures oil wrestling|yagli gures,oil wrestling|tr", "טחטיב|tahtib|tahtib,egyptian stick fighting|eg", "היאבקות|wrestling club|wrestling,היאבקות|intl", "היאבקות חופשית|freestyle wrestling|freestyle wrestling|intl", "היאבקות יוונית רומית|greco roman wrestling|greco roman,greco-roman|intl", "היאבקות פולקסטייל|folkstyle wrestling|folkstyle,collegiate wrestling|us", "קאץ׳ רסלינג|catch wrestling|catch wrestling,catch as catch can|gb", "גראפלינג|submission grappling|grappling,submission wrestling,גרפלינג,adcc|intl", "לוטה ליברה|luta livre|luta livre|br", "וואלה טודו|vale tudo|vale tudo|br", "פנקרטיון|pankration|pankration,פנקרטיון|gr", "גלימה|glima|glima,icelandic wrestling|is", "שווינגן|schwingen|schwingen,swiss wrestling|ch", "לוצ׳ה קנריה|lucha canaria|lucha canaria,canarian wrestling|es", "גורן|gouren breton wrestling|gouren|fr", "היאבקות קמברלנד|cumberland wrestling|cumberland,backhold|gb", "קולר אנד אלבו|collar and elbow wrestling|collar and elbow|ie", "MMA|mma gym|mma,mixed martial arts,אמ אמ איי,ufc,קרב משולב|intl", "אגרוף|boxing gym|boxing,אגרוף,איגרוף,boxe|intl", "אגרוף ללא כפפות|bare knuckle boxing|bare knuckle|gb", "קיקבוקס|kickboxing|kickboxing,קיק בוקס,קיקבוקסינג|intl", "קיקבוקס הולנדי|dutch kickboxing|dutch kickboxing|nl", "קיקבוקס אמריקאי|american kickboxing|american kickboxing|us", "K-1|k-1 kickboxing|k1,k-1|jp", "סאוואט|savate|savate,boxe francaise,אגרוף צרפתי|fr", "קאן דה קומבה|canne de combat|canne de combat,canne|fr", "סייף|fencing club|fencing,סייף,epee,foil,sabre|intl", "סייף היסטורי HEMA|hema historical european martial arts|hema,סייף היסטורי,longsword,חרב ארוכה|intl", "חרב ארוכה גרמנית|german longsword|german longsword,liechtenauer|de", "רפייר איטלקי|italian rapier|rapier,italian fencing|it", "לה ורדדרה דסטרזה|la verdadera destreza|destreza|es", "ז׳וגו דו פאו|jogo do pau|jogo do pau|pt", "חואגו דל פאלו|juego del palo|juego del palo|es", "בטארכט|bataireacht irish stick fighting|bataireacht,shillelagh|ie", "ברטיטסו|bartitsu|bartitsu|gb", "דפנדו|defendu|defendu,fairbairn|gb", "קפוארה|capoeira|capoeira,קפואירה,קפוארה|br", "קפוארה אנגולה|capoeira angola|capoeira angola|br", "קפוארה רג׳יונל|capoeira regional|capoeira regional|br", "מקוללה|maculele|maculele|br", "הוקה הוקה|huka huka|huka huka|br", "דמבה|dambe|dambe,hausa boxing|ng", "לאמב|laamb senegalese wrestling|laamb,lamb wrestling|sn", "אנגולו|engolo|engolo|ao", "קרבות מקלות נגוני|nguni stick fighting|stick fighting,nguni|za", "מוסאנגווה|musangwe|musangwe|za", "מורינגה|moringue|moringue|re", "דנמייה|danmye ladja|danmye,ladja|mq", "קלינדה|kalinda stick fighting|kalinda,calinda|tt", "52 בלוקס|52 blocks|52 blocks|us", "קנפו אמריקאי|american kenpo|kenpo,kempo,קנפו,ed parker|us", "קנפו הוואי|hawaiian kenpo|hawaiian kenpo|hw", "שאולין קמפו|shaolin kempo|shaolin kempo|us", "קאג׳וקנבו|kajukenbo|kajukenbo|hw", "לימאלמה|limalama|limalama|hw", "לואה|lua hawaiian martial art|lua|hw", "צ׳ון קוק דו|chun kuk do|chun kuk do,chuck norris|us", "אוקיצ׳יטאו|okichitaw|okichitaw|ca", "זן דו קאי|zen do kai|zen do kai|au", "קייסי|keysi fighting method|keysi,kfm|es", "דפנדו מודרני|defendo|defendo|ca", "ריוקיו קמפו|ryukyu kempo|ryukyu kempo|ok", "מודרן ארניס|modern arnis|modern arnis|ph", "סאן שו קמפו|san soo kung fu|san soo|us"];
-const ORIGIN = {jp:'יפן',ok:'אוקינאווה',kr:'קוריאה',cn:'סין',hk:'הונג קונג',th:'תאילנד',mm:'מיאנמר',kh:'קמבודיה',la:'לאוס',vn:'וייטנאם',id:'אינדונזיה',my:'מלזיה',ph:'הפיליפינים',in:'הודו',lk:'סרי לנקה',il:'ישראל',ru:'רוסיה',uz:'אוזבקיסטן',kz:'קזחסטן',mn:'מונגוליה',ge:'גאורגיה',am:'ארמניה',ir:'איראן',tr:'טורקיה',eg:'מצרים',intl:'בינלאומי',us:'ארה״ב',gb:'בריטניה',br:'ברזיל',gr:'יוון',is:'איסלנד',ch:'שווייץ',es:'ספרד',fr:'צרפת',ie:'אירלנד',nl:'הולנד',de:'גרמניה',it:'איטליה',pt:'פורטוגל',ng:'ניגריה',sn:'סנגל',ao:'אנגולה',za:'דרום אפריקה',re:'ראוניון',mq:'מרטיניק',tt:'טרינידד',hw:'הוואי',ca:'קנדה',au:'אוסטרליה'};
-const norm = t => t.toLowerCase().replace(/[׳'"״`’]/g,'').replace(/[\s\-־_.()]/g,'');
-const ARTS = ROWS.map(r => { const [he,q,aka,o] = r.split('|'); return {he, q, o, key: norm([he,q,aka].join('|')), words:[he,q,...aka.split(',')]}; });
-const ALL = {he:'כל אמנויות הלחימה', q:'martial arts', o:''};
-
-/* local-language search terms for the big arts, by country code */
-const LOCAL = {
-  'martial arts':{il:'אמנויות לחימה',jp:'武道 道場',kr:'무술 도장',cn:'武术',tw:'武術',hk:'武術',th:'ศิลปะการต่อสู้',ru:'единоборства',ua:'єдиноборства',de:'Kampfsport',at:'Kampfsport',ch:'Kampfsport',fr:'arts martiaux',be:'arts martiaux',es:'artes marciales',mx:'artes marciales',ar:'artes marciales',it:'arti marziali',pt:'artes marciais',br:'artes marciais',nl:'vechtsport',pl:'sztuki walki',gr:'πολεμικές τέχνες',tr:'dövüş sanatları',cz:'bojová umění',ro:'arte marțiale',hu:'harcművészet'},
-  'karate dojo':{il:'קראטה',jp:'空手 道場',kr:'가라테',cn:'空手道',tw:'空手道',ru:'карате',ua:'карате',gr:'καράτε',th:'คาราเต้'},
-  'judo club':{il:'ג׳ודו',jp:'柔道',kr:'유도',cn:'柔道',ru:'дзюдо',ua:'дзюдо',gr:'τζούντο'},
-  'brazilian jiu jitsu':{il:'ג׳יו ג׳יטסו',jp:'柔術',ru:'джиу-джитсу',br:'jiu-jitsu',pt:'jiu-jitsu'},
-  'krav maga':{il:'קרב מגע'},
-  'taekwondo':{il:'טאקוונדו',kr:'태권도',jp:'テコンドー',ru:'тхэквондо'},
-  'boxing gym':{il:'אגרוף',jp:'ボクシングジム',th:'มวยสากล',ru:'бокс',es:'boxeo',mx:'boxeo',fr:'boxe',it:'pugilato'},
-  'muay thai':{il:'מואי תאי',th:'มวยไทย',jp:'ムエタイ'},
-  'aikido dojo':{il:'אייקידו',jp:'合気道',ru:'айкидо'},
-  'kung fu':{il:'קונג פו',cn:'功夫 武馆',tw:'功夫',hk:'功夫',jp:'カンフー'},
-  'kendo':{il:'קנדו',jp:'剣道',kr:'검도'},
-  'wrestling club':{il:'היאבקות',ru:'борьба',jp:'レスリング',tr:'güreş'},
-  'sambo':{ru:'самбо'},
-  'kickboxing':{il:'קיקבוקס',nl:'kickboksen',de:'Kickboxen',ru:'кикбоксинг'},
-  'capoeira':{il:'קפוארה'},
-  'hapkido':{kr:'합기도'},
-  'kyudo':{jp:'弓道'},
-  'iaido':{jp:'居合道'},
-  'sumo':{jp:'相撲'},
-  'wing chun':{hk:'詠春',cn:'咏春'},
-  'tai chi':{cn:'太极拳',tw:'太極拳',hk:'太極拳'},
-  'mma gym':{il:'MMA'}
+/* ---------- icons ---------- */
+const svg = p => `<svg class="i" viewBox="0 0 24 24">${p}</svg>`;
+const I = {
+  phone: svg('<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>'),
+  pin:   svg('<path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  web:   svg('<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 2.5 15.3 0 18M12 3c-2.5 2.7-2.5 15.3 0 18"/>'),
+  chat:  svg('<path d="M20 12a8 8 0 0 1-11.8 7L4 20l1.1-4A8 8 0 1 1 20 12z"/>'),
+  car:   svg('<path d="M5 16V11l2-5h10l2 5v5"/><path d="M3 16h18v3H3z"/>'),
+  search:svg('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>')
 };
 
-/* the phone's time zone follows the traveller, so it tells the country without asking for location */
-const TZ = {'Asia/Jerusalem':'il','Asia/Tel_Aviv':'il','Asia/Tokyo':'jp','Asia/Seoul':'kr','Asia/Shanghai':'cn','Asia/Taipei':'tw','Asia/Hong_Kong':'hk','Asia/Bangkok':'th',
-  'Europe/Moscow':'ru','Europe/Kiev':'ua','Europe/Kyiv':'ua','Europe/Berlin':'de','Europe/Vienna':'at','Europe/Zurich':'ch','Europe/Paris':'fr','Europe/Brussels':'be',
-  'Europe/Madrid':'es','Europe/Rome':'it','Europe/Lisbon':'pt','Europe/Amsterdam':'nl','Europe/Warsaw':'pl','Europe/Athens':'gr','Europe/Istanbul':'tr',
-  'Europe/Prague':'cz','Europe/Bucharest':'ro','Europe/Budapest':'hu','America/Sao_Paulo':'br','America/Mexico_City':'mx','America/Argentina/Buenos_Aires':'ar'};
-let tz = ''; try { tz = Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch(e){}
-const hereCC = TZ[tz] || null;
+/* ---------- which martial art is it ---------- */
+const ARTS = [
+  ['karate','קראטה',/karate|קרטה|קראטה|shotokan|שוטוקאן|kyokushin|קיוקושין|goju|wado|shito/i],
+  ['judo','ג׳ודו',/judo|ג'ודו|ג׳ודו|גודו/i],
+  ['bjj','ג׳יו ג׳יטסו',/jiu.?jitsu|ju.?jitsu|jujutsu|bjj|ג'יו|ג׳יו|ג'וג'יטסו|גרייסי|gracie/i],
+  ['krav','קרב מגע',/krav|קרב מגע|kapap|self.?defen[cs]e|הגנה עצמית/i],
+  ['tkd','טאקוונדו',/taekwon|tae.kwon|טאקוונדו|טקוונדו/i],
+  ['boxing','אגרוף',/boxing|boxe|אגרוף|איגרוף/i],
+  ['kick','קיקבוקס ותאי',/kick.?box|muay|thai|savate|lethwei|קיקבוקס|קיק בוקס|מואי/i],
+  ['mma','MMA',/(^|[^a-z])mma([^a-z]|$)|mixed.martial/i],
+  ['aikido','אייקידו',/aikido|אייקידו|איקידו/i],
+  ['kungfu','קונג פו',/kung.?fu|wushu|wing.?chun|ving.?tsun|tai.?chi|kung_fu|sanda|bagua|xingyi|קונג פו|וינג צ|טאי צ/i],
+  ['capoeira','קפוארה',/capoeira|קפוארה|קפואירה/i],
+  ['fma','קאלי וסילאט',/eskrima|escrima|arnis|\bkali\b|silat|קאלי|סילאט/i],
+  ['wrestle','היאבקות',/wrestl|sambo|grappling|היאבקות|סמבו/i],
+  ['sword','קנדו וסייף',/kendo|iaido|kenjutsu|fencing|hema|קנדו|סייף/i],
+  ['other','אמנויות לחימה',/./]
+];
+const ARTNAME = Object.fromEntries(ARTS.map(a=>[a[0],a[1]]));
+function classify(t){
+  const hay = [t.sport,t.name,t['name:he'],t['name:en'],t.description].filter(Boolean).join(' ; ');
+  const f = ARTS.filter(a=>a[0]!=='other' && a[2].test(hay)).map(a=>a[0]);
+  return f.length ? f : ['other'];
+}
+const KIDS_RE = /ילדים|לילדים|לנוער|נוער|צהרון|גן ילדים|פעוטות|\bkids?\b|children|junior|youth|toddler|kindergarten|preschool/i;
+const isKids = t => ['school','kindergarten','childcare'].includes(t.amenity) || KIDS_RE.test([t.name,t['name:he'],t.description].filter(Boolean).join(' '));
 
 /* ---------- state ---------- */
-let pick = ALL, whereCC = null;
-try { const s = JSON.parse(localStorage.getItem('dojomaps') || '{}'); const f = ARTS.find(a=>a.q===s.q); if (f) pick = f; } catch(e){}
-function save(){ try{ localStorage.setItem('dojomaps', JSON.stringify({q: pick.q})); }catch(e){} }
+let center = null, radiusKm = 5, all = [], art = 'all', onlyPhone = true, showKids = false;
+try { const s = JSON.parse(localStorage.getItem('dojomaps') || '{}'); if (s.r) radiusKm = s.r; if (s.onlyPhone === false) onlyPhone = false; } catch(e){}
+function save(){ try{ localStorage.setItem('dojomaps', JSON.stringify({r:radiusKm, onlyPhone})); }catch(e){} }
 
-/* ---------- search the database ---------- */
-const POPULAR = ['karate dojo','judo club','brazilian jiu jitsu','krav maga','muay thai','boxing gym','mma gym','taekwondo','aikido dojo','kung fu','kickboxing','capoeira'];
-function score(a, nq){
-  if (!nq) return 0;
-  let best = -1;
-  for (const w of a.words){ const nw = norm(w); if (!nw) continue;
-    if (nw === nq) return 100;
-    if (nw.startsWith(nq)) best = Math.max(best, 80 - nw.length/10);
-    else if (nw.includes(nq)) best = Math.max(best, 50 - nw.length/10);
-  }
-  return best;
+/* ---------- header chips ---------- */
+function chip(box, label, on, fn, soft){ const c=document.createElement('button'); c.className='chip'+(on?' on':'')+(soft?' soft':''); c.textContent=label; c.onclick=fn; box.appendChild(c); }
+function buildRadii(){
+  const b=$('radii'); b.innerHTML='<span class="lbl">רדיוס</span>';
+  [2,5,10,20,40].forEach(r=>chip(b, r+' ק״מ', r===radiusKm, ()=>{ radiusKm=r; save(); buildRadii(); if (center) load(); }));
 }
-function hl(text, q){
-  const el = document.createElement('span');
-  const i = q ? text.toLowerCase().indexOf(q.toLowerCase()) : -1;
-  if (i < 0){ el.textContent = text; return el; }
-  el.append(text.slice(0,i)); const m=document.createElement('mark'); m.textContent=text.slice(i,i+q.length); el.append(m, text.slice(i+q.length));
-  return el;
-}
-function renderList(){
-  const raw = $('artQ').value.trim(), nq = norm(raw);
-  let items;
-  if (!nq){ items = POPULAR.map(q=>ARTS.find(a=>a.q===q)).filter(Boolean); $('count').textContent = 'הנפוצות · '+ARTS.length+' אמנויות לחימה במאגר'; }
-  else {
-    items = ARTS.map(a=>[a,score(a,nq)]).filter(x=>x[1]>=0).sort((x,y)=>y[1]-x[1]).map(x=>x[0]);
-    $('count').textContent = items.length ? items.length+' תוצאות' : 'לא נמצא במאגר. אפשר לחפש את המילה הזאת ישירות בגוגל מפס:';
-  }
-  const box = $('list'); box.innerHTML = '';
-  if (nq && !items.length){
-    const free = {he:raw, q:raw, o:''};
-    box.appendChild(optEl(free, raw, 'חיפוש חופשי'));
-  }
-  items.slice(0,40).forEach(a => box.appendChild(optEl(a, raw)));
-  if (items.length > 40){ const m=document.createElement('div'); m.className='more'; m.textContent='ועוד '+(items.length-40)+'. כתבו עוד כדי לצמצם.'; box.appendChild(m); }
-  box.hidden = !box.children.length;
-}
-function optEl(a, raw, sub){
-  const b = document.createElement('button'); b.className='opt';
-  const n = document.createElement('span'); n.className='n'; n.appendChild(hl(a.he, raw));
-  const o = document.createElement('span'); o.className='o'; o.textContent = sub || ORIGIN[a.o] || '';
-  b.append(n, o);
-  b.onclick = () => { pick = a; save(); $('artQ').value=''; renderList(); refresh(); scrollTo({top:0,behavior:'smooth'}); document.querySelector('main').scrollTo({top:0,behavior:'smooth'}); };
-  return b;
-}
-$('artQ').addEventListener('input', renderList);
-$('clearBtn').onclick = () => { pick = ALL; save(); refresh(); };
-
-/* ---------- the Google Maps link ---------- */
-function refresh(){
-  const place = $('where').value.trim();
-  const cc = place ? whereCC : hereCC;
-  const term = (cc && LOCAL[pick.q] && LOCAL[pick.q][cc]) || pick.q;
-  $('pickName').textContent = pick.he;
-  $('pickSub').textContent = pick === ALL ? 'בחרו מהרשימה כדי לצמצם' : (ORIGIN[pick.o] ? 'מקור: '+ORIGIN[pick.o] : 'חיפוש חופשי');
-  $('clearBtn').hidden = pick === ALL;
-  const q = place ? `${term} ${place}` : term;          /* no place: Google Maps searches around where you are */
-  $('go').href = 'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
-  $('what').innerHTML = 'יחפש <b></b> ' + (place ? 'ב' : 'סביבך');
-  $('what').querySelector('b').textContent = '"' + term + '"';
-  if (place) $('what').append(place);
+buildRadii();
+function buildFilters(){
+  const b=$('filters'); b.innerHTML='';
+  if (!all.length) return;
+  const withPhone = all.filter(p=>p.phone).length;
+  chip(b, 'רק עם טלפון · '+withPhone, onlyPhone, ()=>{ onlyPhone=!onlyPhone; save(); render(); }, true);
+  const kids = all.filter(p=>p.kids).length;
+  if (kids) chip(b, (showKids?'כולל':'בלי')+' חוגי ילדים · '+kids, !showKids, ()=>{ showKids=!showKids; render(); }, true);
+  const a=$('arts'); a.innerHTML='';
+  const counts={}; visibleBase().forEach(p=>p.arts.forEach(x=>counts[x]=(counts[x]||0)+1));
+  if (art!=='all' && !counts[art]) art='all';
+  chip(a, 'הכל', art==='all', ()=>{ art='all'; render(); });
+  ARTS.filter(x=>counts[x[0]]).forEach(x=>chip(a, x[1]+' · '+counts[x[0]], art===x[0], ()=>{ art=x[0]; render(); }));
 }
 
-/* a typed city: find its country (to search in the local language) */
-let wTimer = null, wSeq = 0;
-$('where').addEventListener('input', () => {
-  whereCC = null; refresh();
-  clearTimeout(wTimer);
-  const v = $('where').value.trim();
-  if (v.length < 2) return;
-  const seq = ++wSeq;
-  wTimer = setTimeout(async () => {
-    try {
-      const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&addressdetails=1&q=' + encodeURIComponent(v));
-      const js = await r.json();
-      if (seq !== wSeq) return;
-      whereCC = (js[0]?.address?.country_code || '').toLowerCase() || null;
-      refresh();
-    } catch(e){}
-  }, 500);
+/* ---------- distance & travel time ---------- */
+function hav(a,b,c,d){const R=6371,r=x=>x*Math.PI/180;const dl=r(c-a),dn=r(d-b);const h=Math.sin(dl/2)**2+Math.cos(r(a))*Math.cos(r(c))*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(h));}
+const fmtKm = km => km<1 ? Math.round(km*1000)+' מ׳' : km.toFixed(1)+' ק״מ';
+function fmtMin(m){ m=Math.max(1,Math.round(m)); return m<60 ? m+' דק׳' : Math.floor(m/60)+':'+String(m%60).padStart(2,'0')+' ש׳'; }
+/* rough: streets are ~30-40% longer than a straight line; walking 4.8 km/h, city driving ~28 km/h */
+function travel(km){ const road=km*1.35; return km<1.5 ? 'כ־'+fmtMin(road/4.8*60)+' ברגל' : 'כ־'+fmtMin(road/28*60+3)+' ברכב'; }
+
+/* ---------- opening hours, in Hebrew ---------- */
+const DAYS={Su:'א׳',Mo:'ב׳',Tu:'ג׳',We:'ד׳',Th:'ה׳',Fr:'ו׳',Sa:'שבת',PH:'חג'};
+function hoursText(oh){
+  if (!oh) return '';
+  if (oh.trim()==='24/7') return 'פתוח 24/7';
+  return oh.split(';').map(s=>s.trim()).filter(Boolean).map(seg=>seg
+    .replace(/\b(Su|Mo|Tu|We|Th|Fr|Sa|PH)\b/g,d=>DAYS[d]).replace(/\boff\b|\bclosed\b/gi,'סגור')).join(' · ');
+}
+
+/* ---------- phone helpers ---------- */
+const firstPhone = t => (t.phone || t['contact:phone'] || t['contact:mobile'] || '').split(';')[0].trim();
+const telHref = p => 'tel:' + p.replace(/[^\d+]/g,'');
+function waNum(n){ let d=n.replace(/[^\d+]/g,''); if (d.startsWith('+')) return d.slice(1); if (d.startsWith('00')) return d.slice(2); if (d.startsWith('0') && cc==='il') return '972'+d.slice(1); return d; }
+
+/* ---------- fetch dojos (OpenStreetMap, free) ---------- */
+const SPORTS='karate|judo|taekwondo|boxing|kickboxing|martial_arts|jiu-jitsu|brazilian_jiu-jitsu|ju-jitsu|aikido|kung_fu|wushu|krav_maga|mma|muay_thai|kendo|iaido|capoeira|wrestling|sambo|tai_chi|wing_chun|hapkido|silat|eskrima|arnis|kali|systema|jeet_kune_do|ninjutsu|kenpo|savate|sanda|sumo|kyudo|grappling|hema|fencing|kalaripayattu|bokator|lethwei|kudo';
+const NAME_RE="karate|judo|dojo|dojang|jiu.?jitsu|bjj|krav|taekwon|kickbox|muay|aikido|kung.?fu|wing.?chun|capoeira|kendo|boxing|silat|eskrima|systema|ninjutsu|kenpo|hapkido|sambo|grappling|martial|קרטה|קראטה|ג'ודו|ג׳ודו|דוג'ו|דוג׳ו|קרב מגע|טאקוונדו|קיקבוקס|אגרוף|אייקידו|קונג פו|אמנויות לחימה|אומנויות לחימה|ג'יו|ג׳יו|קפוארה|הגנה עצמית|מואי תאי|סמבו|וינג|לחימה";
+const ENDPOINTS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter','https://overpass.private.coffee/api/interpreter'];
+const NOT_DOJO=['restaurant','cafe','fast_food','bar','pub','pharmacy','fuel','bank'];
+let cc = null, loadSeq = 0;
+
+function status(html){ $('main').innerHTML = '<div class="empty">'+html+'</div>'; }
+async function load(){
+  const seq = ++loadSeq;
+  status('<div class="spinner"></div>מחפש מכונים ברדיוס '+radiusKm+' ק״מ');
+  const A=`(around:${radiusKm*1000},${center.lat},${center.lon})`;
+  const q=`[out:json][timeout:25];(
+    nwr["sport"~"${SPORTS}",i]${A};
+    nwr["amenity"="dojo"]${A};
+    nwr["leisure"~"sports_centre|fitness_centre|sports_hall"]["name"~"${NAME_RE}",i]${A};
+    nwr["club"="sport"]["name"~"${NAME_RE}",i]${A};
+    nwr["name"~"dojo|דוג'ו|דוג׳ו|קרב מגע|אמנויות לחימה|אומנויות לחימה|karate|קרטה|קראטה|judo|ג'ודו|ג׳ודו|martial arts",i]${A};
+  );out center tags;`;
+  let data=null;
+  for (const ep of ENDPOINTS){
+    try{
+      const ctl=new AbortController(); const tm=setTimeout(()=>ctl.abort(),20000);
+      const r=await fetch(ep,{method:'POST',body:'data='+encodeURIComponent(q),headers:{'Content-Type':'application/x-www-form-urlencoded'},signal:ctl.signal});
+      clearTimeout(tm);
+      if (r.ok){ data=await r.json(); break; }
+    }catch(e){}
+  }
+  if (seq!==loadSeq) return;
+  if (!data){ status('שרת המפות לא ענה. נסו שוב בעוד רגע.<br><button class="showmore" onclick="load()">נסו שוב</button>'); return; }
+  const seen=new Set();
+  all = data.elements.map(el=>{
+    const lat=el.lat??el.center?.lat, lon=el.lon??el.center?.lon; if (lat==null) return null;
+    const t=el.tags||{}; const name=t['name:he']||t.name||t['name:en']; if (!name) return null;
+    if (t.shop || NOT_DOJO.includes(t.amenity)) return null;
+    const k=name.trim().toLowerCase()+'|'+lat.toFixed(3)+lon.toFixed(3); if (seen.has(k)) return null; seen.add(k);
+    const addr=[[t['addr:street'],t['addr:housenumber']].filter(Boolean).join(' '), t['addr:city']].filter(Boolean).join(', ');
+    return {id:el.type+el.id, name, lat, lon, t, arts:classify(t), kids:isKids(t), phone:firstPhone(t), addr,
+      hours:hoursText(t.opening_hours), web:t.website||t['contact:website']||t['contact:facebook']||'', city:t['addr:city']||'', dist:hav(center.lat,center.lon,lat,lon)};
+  }).filter(Boolean).filter(p=>p.dist<=radiusKm+0.05).sort((a,b)=>a.dist-b.dist);
+  render();
+  fillAddresses(seq);
+}
+
+function visibleBase(){ return all.filter(p => showKids || !p.kids); }
+function render(){
+  buildFilters();
+  const base = visibleBase().filter(p => art==='all' || p.arts.includes(art));
+  const list = onlyPhone ? base.filter(p=>p.phone) : base;
+  const hidden = base.length - list.length;
+  if (!all.length){ status('לא נמצאו מכונים ממופים ברדיוס '+radiusKm+' ק״מ.<br>נסו רדיוס גדול יותר.'); return; }
+  let h = `<div class="summary"><b>${list.length}</b> מכונים${onlyPhone?' עם טלפון':''} · ${esc(center.label||'')} · מהקרוב לרחוק</div>`;
+  if (!list.length) h += `<div class="empty" style="padding:20px">לאף מכון כאן אין טלפון רשום במפה.</div>`;
+  h += list.map(card).join('');
+  if (onlyPhone && hidden) h += `<button class="showmore" id="showAll">הצג עוד ${hidden} בלי טלפון (עם חיפוש טלפון בגוגל)</button>`;
+  h += `<div class="note">המידע מ־OpenStreetMap. זמני ההגעה משוערים לפי מרחק; Waze ייתן זמן מדויק.</div>`;
+  $('main').innerHTML = h;
+  const sa=$('showAll'); if (sa) sa.onclick=()=>{ onlyPhone=false; save(); render(); };
+}
+function card(p){
+  const g = 'https://www.google.com/search?q='+encodeURIComponent(p.name+' '+(p.city||center.label||'')+' טלפון');
+  return `<div class="card">
+    <div class="top"><div class="name">${esc(p.name)}<div class="arts">${p.arts.map(a=>ARTNAME[a]).join(' · ')}${p.kids?' · חוג ילדים':''}</div></div>
+      <div class="dist">${fmtKm(p.dist)}<small>${travel(p.dist)}</small></div></div>
+    <div class="line">${I.pin}<div class="v ${p.addr?'':'none'}" data-addr="${p.id}">${p.addr?esc(p.addr):'מאתר כתובת…'}</div></div>
+    ${p.hours?`<div class="line">${I.clock}<div class="v">${esc(p.hours)}</div></div>`:''}
+    ${p.web?`<div class="line">${I.web}<div class="v"><a href="${esc(/^https?:/i.test(p.web)?p.web:'https://'+p.web)}" target="_blank" rel="noopener">${esc(p.web.replace(/^https?:\/\/(www\.)?/,'').replace(/\/$/,''))}</a></div></div>`:''}
+    <div class="acts">
+      ${p.phone?`<a class="act call" href="${telHref(p.phone)}">${I.phone}${esc(p.phone)}</a>
+        <a class="act" href="https://wa.me/${esc(waNum(p.phone))}" target="_blank" rel="noopener" aria-label="וואטסאפ">${I.chat}</a>`
+       :`<a class="act find" href="${g}" target="_blank" rel="noopener">${I.search}מצא טלפון בגוגל</a>`}
+      <a class="act" href="https://waze.com/ul?ll=${p.lat},${p.lon}&navigate=yes" target="_blank" rel="noopener" aria-label="ניווט ב־Waze">${I.car}</a>
+    </div>
+  </div>`;
+}
+
+/* missing addresses: look them up one per second (the free service's rule), nearest first */
+async function fillAddresses(seq){
+  for (const p of all.filter(x=>!x.addr).slice(0,25)){
+    if (seq!==loadSeq) return;
+    try{
+      const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=18&accept-language=he&lat=${p.lat}&lon=${p.lon}`);
+      const a=(await r.json()).address||{};
+      p.city = p.city || a.city||a.town||a.village||'';
+      p.addr=[[a.road,a.house_number].filter(Boolean).join(' '), p.city].filter(Boolean).join(', ') || 'כתובת לא ידועה';
+      const el=document.querySelector(`[data-addr="${p.id}"]`); if (el){ el.textContent=p.addr; el.classList.remove('none'); }
+    }catch(e){}
+    await new Promise(r=>setTimeout(r,1100));
+  }
+}
+
+/* ---------- choose the location ---------- */
+async function setCenter(lat, lon, label){
+  center={lat,lon,label};
+  load();
+  try{
+    const r=await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=14&accept-language=he&lat=${lat}&lon=${lon}`);
+    const js=await r.json(); const a=js.address||{};
+    cc=(a.country_code||'').toLowerCase()||null;
+    if (label==='סביבי'){ center.label=a.suburb||a.neighbourhood||a.city||a.town||a.village||label; const s=document.querySelector('.summary'); if (s) render(); }
+  }catch(e){}
+}
+$('meBtn').onclick=()=>{
+  if (!navigator.geolocation){ status('הדפדפן לא תומך באיתור מיקום. כתבו עיר.'); return; }
+  status('<div class="spinner"></div>מאתר את המיקום שלך');
+  navigator.geolocation.getCurrentPosition(
+    p=>{ $('q').value=''; setCenter(p.coords.latitude,p.coords.longitude,'סביבי'); },
+    ()=>status('לא קיבלתי מיקום. אשרו הרשאת מיקום לאתר, או כתבו עיר.'),
+    {enableHighAccuracy:true,timeout:12000});
+};
+let sTimer=null;
+$('q').addEventListener('input',e=>{
+  clearTimeout(sTimer); const v=e.target.value.trim();
+  if (v.length<2){ $('sugg').style.display='none'; return; }
+  sTimer=setTimeout(async()=>{
+    try{
+      const r=await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&accept-language=he&q='+encodeURIComponent(v));
+      const js=await r.json(); const box=$('sugg'); box.innerHTML='';
+      if (!js.length){ box.style.display='none'; return; }
+      js.forEach(x=>{ const d=document.createElement('div'); d.textContent=x.display_name;
+        d.onclick=()=>{ box.style.display='none'; const s=x.display_name.split(',')[0]; $('q').value=s; $('q').blur(); setCenter(+x.lat,+x.lon,s); };
+        box.appendChild(d); });
+      box.style.display='block';
+    }catch(e){}
+  },450);
 });
-
-renderList();
-refresh();
+$('q').addEventListener('keydown',e=>{ if (e.key==='Enter'){ const f=$('sugg').firstChild; if (f) f.click(); }});
+document.addEventListener('click',e=>{ if (!e.target.closest('.field')) $('sugg').style.display='none'; });
 </script>
 </body>
 </html>
